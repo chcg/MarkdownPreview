@@ -33,7 +33,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 Plans:
 - [x] 01-01-PLAN.md — VS2022 solution scaffolding, NuGet packages, plugin DLL skeleton with exports
 - [x] 01-02-PLAN.md — Docking panel, toggle command, settings persistence
-- [ ] 01-03-PLAN.md — WebView2 initialization, fallback UI, welcome page
+- [x] 01-03-PLAN.md — WebView2 initialization, fallback UI, welcome page
 
 ### Phase 2: Core Preview
 **Goal**: Users see their markdown rendered live with full GFM support, syntax-highlighted code, correct images, themes, synchronized scrolling, and can export to HTML
