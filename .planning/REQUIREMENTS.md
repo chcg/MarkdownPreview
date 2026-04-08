@@ -83,36 +83,36 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| REND-01 | Pending | Pending |
-| REND-02 | Pending | Pending |
-| REND-03 | Pending | Pending |
-| REND-04 | Pending | Pending |
-| REND-05 | Pending | Pending |
-| REND-06 | Pending | Pending |
-| XRND-01 | Pending | Pending |
-| XRND-02 | Pending | Pending |
-| XRND-03 | Pending | Pending |
-| XRND-04 | Pending | Pending |
-| THME-01 | Pending | Pending |
-| THME-02 | Pending | Pending |
-| THME-03 | Pending | Pending |
-| THME-04 | Pending | Pending |
-| SCRL-01 | Pending | Pending |
-| SCRL-02 | Pending | Pending |
-| SCRL-03 | Pending | Pending |
-| EXPT-01 | Pending | Pending |
-| EXPT-02 | Pending | Pending |
-| EXPT-03 | Pending | Pending |
-| INFR-01 | Pending | Pending |
-| INFR-02 | Pending | Pending |
-| INFR-03 | Pending | Pending |
-| INFR-04 | Pending | Pending |
+| REND-01 | Phase 2 | Pending |
+| REND-02 | Phase 2 | Pending |
+| REND-03 | Phase 2 | Pending |
+| REND-04 | Phase 2 | Pending |
+| REND-05 | Phase 2 | Pending |
+| REND-06 | Phase 2 | Pending |
+| XRND-01 | Phase 3 | Pending |
+| XRND-02 | Phase 3 | Pending |
+| XRND-03 | Phase 3 | Pending |
+| XRND-04 | Phase 3 | Pending |
+| THME-01 | Phase 2 | Pending |
+| THME-02 | Phase 2 | Pending |
+| THME-03 | Phase 2 | Pending |
+| THME-04 | Phase 3 | Pending |
+| SCRL-01 | Phase 2 | Pending |
+| SCRL-02 | Phase 4 | Pending |
+| SCRL-03 | Phase 4 | Pending |
+| EXPT-01 | Phase 2 | Pending |
+| EXPT-02 | Phase 3 | Pending |
+| EXPT-03 | Phase 3 | Pending |
+| INFR-01 | Phase 1 | Pending |
+| INFR-02 | Phase 1 | Pending |
+| INFR-03 | Phase 1 | Pending |
+| INFR-04 | Phase 4 | Pending |
 
 **Coverage:**
 - v1 requirements: 24 total
-- Mapped to phases: 0
-- Unmapped: 24
+- Mapped to phases: 24
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-08*
-*Last updated: 2026-04-08 after initial definition*
+*Last updated: 2026-04-08 after roadmap creation*
