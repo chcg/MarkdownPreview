@@ -12,7 +12,8 @@ Open a markdown file, see it beautifully rendered in real-time as you type — n
 
 ### Validated
 
-(None yet — ship to validate)
+- [x] Toggle to show/hide the preview panel — Validated in Phase 1: Plugin Foundation
+- [x] WebView2 runtime graceful fallback when missing — Validated in Phase 1: Plugin Foundation
 
 ### Active
 
@@ -28,7 +29,7 @@ Open a markdown file, see it beautifully rendered in real-time as you type — n
 - [ ] Dark and light theme included out of the box
 - [ ] Export rendered markdown to standalone HTML file
 - [ ] Export rendered markdown to PDF
-- [ ] Toggle to show/hide the preview panel
+- [ ] Toggle to show/hide the preview panel (see Validated)
 - [ ] Publish-ready quality: proper installer, error handling, Notepad++ plugin list compatible
 
 ### Out of Scope
@@ -58,8 +59,8 @@ Open a markdown file, see it beautifully rendered in real-time as you type — n
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Dockable panel (not split view) | Follows Notepad++ UX conventions, familiar to users | — Pending |
-| WebView2 for rendering engine | Modern, ships with Windows, supports full HTML/CSS/JS for rich rendering | — Pending |
+| Dockable panel (not split view) | Follows Notepad++ UX conventions, familiar to users | Validated Phase 1 |
+| WebView2 for rendering engine | Modern, ships with Windows, supports full HTML/CSS/JS for rich rendering | Validated Phase 1 |
 | Full-featured markdown (GFM + math + diagrams) | User wants comprehensive rendering, not a minimal previewer | — Pending |
 | Customizable themes via CSS | Gives users control, reduces opinionated design decisions | — Pending |
 
