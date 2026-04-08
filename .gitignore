@@ -1,0 +1,28 @@
+# Build output
+bin/
+obj/
+
+# NuGet packages
+packages/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.ncb
+*.sdf
+*.opensdf
+*.cachefile
+*.aps
+
+# Build artifacts
+Debug/
+Release/
+x64/
+x86/
+
+# NuGet executable (downloaded for restore)
+nuget.exe
+
+# VS upgrade logs
+UpgradeLog.htm
