@@ -28,10 +28,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. User can toggle a dockable preview panel via menu item and keyboard shortcut
   3. WebView2 initializes inside the dockable panel and renders a placeholder page
   4. When WebView2 runtime is missing, a clear message is shown instead of a crash
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-(TBD)
+- [ ] 01-01-PLAN.md — VS2022 solution scaffolding, NuGet packages, plugin DLL skeleton with exports
+- [ ] 01-02-PLAN.md — Docking panel, toggle command, settings persistence
+- [ ] 01-03-PLAN.md — WebView2 initialization, fallback UI, welcome page
 
 ### Phase 2: Core Preview
 **Goal**: Users see their markdown rendered live with full GFM support, syntax-highlighted code, correct images, themes, synchronized scrolling, and can export to HTML
@@ -84,7 +86,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Plugin Foundation | 0/TBD | Not started | - |
+| 1. Plugin Foundation | 0/3 | Planning complete | - |
 | 2. Core Preview | 0/TBD | Not started | - |
 | 3. Extended Rendering | 0/TBD | Not started | - |
 | 4. Polish & Publication | 0/TBD | Not started | - |
