@@ -31,7 +31,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 3 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — VS2022 solution scaffolding, NuGet packages, plugin DLL skeleton with exports
+- [x] 01-01-PLAN.md — VS2022 solution scaffolding, NuGet packages, plugin DLL skeleton with exports
 - [ ] 01-02-PLAN.md — Docking panel, toggle command, settings persistence
 - [ ] 01-03-PLAN.md — WebView2 initialization, fallback UI, welcome page
 

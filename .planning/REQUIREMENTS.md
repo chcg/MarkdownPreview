@@ -45,7 +45,7 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Plugin Infrastructure
 
 - [ ] **INFR-01**: Toggle show/hide preview panel via menu item and keyboard shortcut
-- [ ] **INFR-02**: Plugin loads correctly in both 32-bit and 64-bit Notepad++
+- [x] **INFR-02**: Plugin loads correctly in both 32-bit and 64-bit Notepad++
 - [ ] **INFR-03**: Graceful handling when WebView2 runtime is not installed
 - [ ] **INFR-04**: Publish-ready quality — proper installer, versioning, plugin list compatible
 
@@ -104,7 +104,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | EXPT-02 | Phase 3 | Pending |
 | EXPT-03 | Phase 3 | Pending |
 | INFR-01 | Phase 1 | Pending |
-| INFR-02 | Phase 1 | Pending |
+| INFR-02 | Phase 1 | Complete |
 | INFR-03 | Phase 1 | Pending |
 | INFR-04 | Phase 4 | Pending |
 
