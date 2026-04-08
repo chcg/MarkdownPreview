@@ -113,7 +113,8 @@
       <AdditionalLibraryDirectories>$(SolutionDir)packages\Microsoft.Web.WebView2.1.0.3856.49\build\native\$(PlatformTarget)\WebView2LoaderStatic.lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>copy /Y "$(SolutionDir)packages\Microsoft.Web.WebView2.1.0.3856.49\build\native\$(PlatformTarget)\WebView2Loader.dll" "$(OutDir)"</Command>
+      <Command>copy /Y "$(SolutionDir)packages\Microsoft.Web.WebView2.1.0.3856.49\build\native\$(PlatformTarget)\WebView2Loader.dll" "$(OutDir)"
+xcopy /Y /E /I "$(ProjectDir)assets" "$(OutDir)assets\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <!-- Release|Win32 -->
@@ -138,7 +139,8 @@
       <AdditionalLibraryDirectories>$(SolutionDir)packages\Microsoft.Web.WebView2.1.0.3856.49\build\native\$(PlatformTarget)\WebView2LoaderStatic.lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>copy /Y "$(SolutionDir)packages\Microsoft.Web.WebView2.1.0.3856.49\build\native\$(PlatformTarget)\WebView2Loader.dll" "$(OutDir)"</Command>
+      <Command>copy /Y "$(SolutionDir)packages\Microsoft.Web.WebView2.1.0.3856.49\build\native\$(PlatformTarget)\WebView2Loader.dll" "$(OutDir)"
+xcopy /Y /E /I "$(ProjectDir)assets" "$(OutDir)assets\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <!-- Debug|x64 -->
@@ -159,7 +161,8 @@
       <AdditionalLibraryDirectories>$(SolutionDir)packages\Microsoft.Web.WebView2.1.0.3856.49\build\native\$(PlatformTarget)\WebView2LoaderStatic.lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>copy /Y "$(SolutionDir)packages\Microsoft.Web.WebView2.1.0.3856.49\build\native\$(PlatformTarget)\WebView2Loader.dll" "$(OutDir)"</Command>
+      <Command>copy /Y "$(SolutionDir)packages\Microsoft.Web.WebView2.1.0.3856.49\build\native\$(PlatformTarget)\WebView2Loader.dll" "$(OutDir)"
+xcopy /Y /E /I "$(ProjectDir)assets" "$(OutDir)assets\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <!-- Release|x64 -->
@@ -184,7 +187,8 @@
       <AdditionalLibraryDirectories>$(SolutionDir)packages\Microsoft.Web.WebView2.1.0.3856.49\build\native\$(PlatformTarget)\WebView2LoaderStatic.lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>copy /Y "$(SolutionDir)packages\Microsoft.Web.WebView2.1.0.3856.49\build\native\$(PlatformTarget)\WebView2Loader.dll" "$(OutDir)"</Command>
+      <Command>copy /Y "$(SolutionDir)packages\Microsoft.Web.WebView2.1.0.3856.49\build\native\$(PlatformTarget)\WebView2Loader.dll" "$(OutDir)"
+xcopy /Y /E /I "$(ProjectDir)assets" "$(OutDir)assets\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
