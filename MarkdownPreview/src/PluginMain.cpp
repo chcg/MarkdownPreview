@@ -40,10 +40,12 @@ extern "C" __declspec(dllexport) BOOL isUnicode() {
 extern "C" __declspec(dllexport) void beNotified(SCNotification* notification) {
     switch (notification->nmhdr.code) {
     case NPPN_READY:
-        // Notepad++ is fully initialized
+        // Notepad++ is fully initialized — load settings and init panel
+        onNppReady();
         break;
     case NPPN_SHUTDOWN:
-        // Notepad++ is about to shut down
+        // Notepad++ is about to shut down — persist settings
+        onNppShutdown();
         commandMenuCleanUp();
         break;
     case NPPN_TBMODIFICATION:

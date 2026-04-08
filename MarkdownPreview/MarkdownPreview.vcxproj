@@ -190,9 +190,13 @@
   <ItemGroup>
     <ClCompile Include="src\PluginMain.cpp" />
     <ClCompile Include="src\PluginDefinition.cpp" />
+    <ClCompile Include="src\PreviewPanel.cpp" />
+    <ClCompile Include="src\Settings.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\PluginDefinition.h" />
+    <ClInclude Include="src\PreviewPanel.h" />
+    <ClInclude Include="src\Settings.h" />
     <ClInclude Include="include\PluginInterface.h" />
     <ClInclude Include="include\Notepad_plus_msgs.h" />
     <ClInclude Include="include\Scintilla.h" />

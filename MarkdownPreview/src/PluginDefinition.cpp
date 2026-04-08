@@ -2,25 +2,34 @@
 
 #include "PluginDefinition.h"
 #include <cstring>
+#include <string>
+#include <objbase.h>
 
 // Global plugin data
 NppData nppData;
 FuncItem funcItems[NB_FUNC];
-HINSTANCE hInstance = nullptr;
+PreviewPanel g_previewPanel;
+Settings g_settings;
 
-// Shortcut key: Ctrl+Shift+M
+static HINSTANCE g_hInstance = nullptr;
+static std::wstring g_configPath;
+
+// Shortcut key: Ctrl+Shift+M (D-08)
 static ShortcutKey toggleShortcut = { true, false, true, 'M' };
 
 void pluginInit(HANDLE hModule) {
-    hInstance = reinterpret_cast<HINSTANCE>(hModule);
+    g_hInstance = reinterpret_cast<HINSTANCE>(hModule);
+    // Per Pitfall 2: CoInitializeEx required before WebView2, safe to call early
+    // Duplicate calls return S_FALSE which is fine
+    ::CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
 }
 
 void pluginCleanUp() {
-    // Cleanup will be implemented in later phases
+    g_previewPanel.destroy();
 }
 
 void commandMenuInit() {
-    // Menu item 0: Toggle Preview (Ctrl+Shift+M)
+    // Menu item 0: Toggle Preview (Ctrl+Shift+M) per D-09
     wcscpy_s(funcItems[0]._itemName, menuItemSize, L"Toggle Preview");
     funcItems[0]._pFunc = togglePreview;
     funcItems[0]._cmdID = 0;
@@ -32,10 +41,30 @@ void commandMenuCleanUp() {
     // Shortcut cleanup will be implemented if needed
 }
 
+void onNppReady() {
+    // Compute config path using NPPM_GETPLUGINSCONFIGDIR (D-14)
+    wchar_t configDir[MAX_PATH] = {};
+    ::SendMessage(nppData._nppHandle, NPPM_GETPLUGINSCONFIGDIR, MAX_PATH, reinterpret_cast<LPARAM>(configDir));
+    g_configPath = std::wstring(configDir) + L"\\MarkdownPreview.json";
+
+    // Load persisted settings
+    g_settings.load(g_configPath);
+
+    // Initialize preview panel (lazy - window created on first toggle per D-06)
+    g_previewPanel.init(g_hInstance, nppData._nppHandle);
+
+    // Restore panel visibility state from previous session (D-04)
+    if (g_settings.panelVisible) {
+        g_previewPanel.toggle(funcItems[0]._cmdID);
+    }
+}
+
+void onNppShutdown() {
+    // Persist settings before Notepad++ exits
+    g_settings.save(g_configPath);
+}
+
 void togglePreview() {
-    // Stub: will be replaced with docking panel toggle in Plan 02
-    MessageBox(nppData._nppHandle,
-        L"MarkdownPreview toggle - panel will be implemented in the next phase.",
-        L"MarkdownPreview",
-        MB_OK | MB_ICONINFORMATION);
+    g_previewPanel.toggle(funcItems[0]._cmdID);
+    g_settings.panelVisible = g_previewPanel.isVisible();
 }
