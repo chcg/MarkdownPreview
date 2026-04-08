@@ -5,11 +5,17 @@
 
 #include <windows.h>
 
-// Docking position masks
-#define DWS_DF_CONT_LEFT    (1 << 28)
-#define DWS_DF_CONT_RIGHT   (2 << 28)
-#define DWS_DF_CONT_TOP     (4 << 28)
-#define DWS_DF_CONT_BOTTOM  (8 << 28)
+// Container indices (must match Notepad++ internal values)
+#define CONT_LEFT    0
+#define CONT_RIGHT   1
+#define CONT_TOP     2
+#define CONT_BOTTOM  3
+
+// Docking position masks (container index in bits 28-31)
+#define DWS_DF_CONT_LEFT    (CONT_LEFT << 28)
+#define DWS_DF_CONT_RIGHT   (CONT_RIGHT << 28)
+#define DWS_DF_CONT_TOP     (CONT_TOP << 28)
+#define DWS_DF_CONT_BOTTOM  (CONT_BOTTOM << 28)
 
 // Docking icon flags
 #define DWS_ICONTAB         0x00000001
