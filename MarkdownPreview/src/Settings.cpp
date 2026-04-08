@@ -4,6 +4,7 @@
 #include "Settings.h"
 #include <nlohmann/json.hpp>
 #include <fstream>
+#include <windows.h>
 
 void Settings::load(const std::wstring& configPath) {
     std::ifstream f(configPath);
@@ -18,6 +19,17 @@ void Settings::load(const std::wstring& configPath) {
 }
 
 void Settings::save(const std::wstring& configPath) {
+    if (configPath.empty()) return;
+
+    // Ensure the parent directory exists — NPP config dir should exist,
+    // but create it defensively in case it doesn't
+    std::wstring dir = configPath;
+    size_t pos = dir.find_last_of(L"\\/");
+    if (pos != std::wstring::npos) {
+        dir = dir.substr(0, pos);
+        ::CreateDirectoryW(dir.c_str(), nullptr);  // no-op if exists
+    }
+
     nlohmann::json j;
     j["panelVisible"] = panelVisible;
     std::ofstream f(configPath);

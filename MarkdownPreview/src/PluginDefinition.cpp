@@ -25,7 +25,12 @@ void pluginInit(HANDLE hModule) {
 }
 
 void pluginCleanUp() {
-    g_previewPanel.destroy();
+    // NOTE: Do NOT destroy the panel here.
+    // pluginCleanUp is called from DLL_PROCESS_DETACH, which runs after
+    // Notepad++ has already torn down its UI. Calling DestroyWindow or
+    // WebView2 Close at this point is unsafe and can corrupt WebView2
+    // user data (stale lock files), causing failures on next restart.
+    // Panel cleanup is done in onNppShutdown() instead.
 }
 
 void commandMenuInit() {
@@ -62,9 +67,20 @@ void onNppReady() {
 void onNppShutdown() {
     // Persist settings before Notepad++ exits
     g_settings.save(g_configPath);
+
+    // Clean up panel resources while NPP is still alive.
+    // This is safer than pluginCleanUp (DLL_PROCESS_DETACH) because
+    // window handles and COM objects are still valid here.
+    g_previewPanel.destroy();
 }
 
 void togglePreview() {
     g_previewPanel.toggle(funcItems[0]._cmdID);
     g_settings.panelVisible = g_previewPanel.isVisible();
+
+    // Save immediately so state persists even if NPP crashes or
+    // NPPN_SHUTDOWN doesn't fire cleanly
+    if (!g_configPath.empty()) {
+        g_settings.save(g_configPath);
+    }
 }

@@ -36,10 +36,18 @@ void PreviewPanel::destroy() {
         ::DestroyWindow(m_hFallback);
         m_hFallback = nullptr;
     }
-    if (m_hPanel) {
-        ::DestroyWindow(m_hPanel);
-        m_hPanel = nullptr;
-    }
+    // NOTE: Do NOT call DestroyWindow on m_hPanel here.
+    // The panel HWND is managed by Notepad++'s docking manager after
+    // NPPM_DMMREGASDCKDLG. NPP destroys it during its own shutdown.
+    // Destroying it ourselves causes NPP to reference a stale HWND
+    // which can lead to crashes or broken state on restart.
+    m_hPanel = nullptr;
+
+    // Reset state so re-registration works if needed
+    m_isRegistered = false;
+    m_isVisible = false;
+    m_webview2Available = false;
+    m_webview2Initialized = false;
 }
 
 void PreviewPanel::createHostWindow() {
@@ -112,8 +120,13 @@ void PreviewPanel::toggle(int cmdID) {
 
     if (!m_isRegistered) {
         registerPanel();
+        // Only mark as registered if the panel was actually created
+        if (!m_hPanel) return;
         m_isRegistered = true;
     }
+
+    // Guard against toggle with no panel (should not happen, but defensive)
+    if (!m_hPanel) return;
 
     if (m_isVisible) {
         ::SendMessage(m_nppHandle, NPPM_DMMHIDE, 0, reinterpret_cast<LPARAM>(m_hPanel));
