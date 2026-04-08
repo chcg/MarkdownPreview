@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-01-PLAN.md
-last_updated: "2026-04-08T18:40:29.442Z"
+stopped_at: Completed 01-02-PLAN.md
+last_updated: "2026-04-08T18:45:50.098Z"
 last_activity: 2026-04-08
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 3
-  completed_plans: 1
-  percent: 33
+  completed_plans: 2
+  percent: 67
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-08)
 ## Current Position
 
 Phase: 01 (plugin-foundation) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-04-08
 
@@ -53,6 +53,7 @@ Progress: [░░░░░░░░░░] 0%
 
 *Updated after each plan completion*
 | Phase 01-plugin-foundation P01 | 16min | 3 tasks | 12 files |
+| Phase 01-plugin-foundation P02 | 3min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -65,6 +66,8 @@ Recent decisions affecting current work:
 
 - [Phase 01-plugin-foundation]: PlatformToolset v145 (VS 2026) instead of v143 (VS 2022) due to dev environment
 - [Phase 01-plugin-foundation]: Plugin display name MarkdownPreview with Ctrl+Shift+M shortcut for Toggle Preview
+- [Phase 01-plugin-foundation]: onNppReady/onNppShutdown as separate functions called from PluginMain beNotified handler
+- [Phase 01-plugin-foundation]: CoInitializeEx called in pluginInit (DLL_PROCESS_ATTACH) for early COM STA readiness
 
 ### Pending Todos
 
@@ -77,6 +80,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-08T18:40:29.436Z
-Stopped at: Completed 01-01-PLAN.md
+Last session: 2026-04-08T18:45:50.093Z
+Stopped at: Completed 01-02-PLAN.md
 Resume file: None
