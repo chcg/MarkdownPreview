@@ -290,11 +290,16 @@ void PreviewPanel::initWebView2() {
                                 &m_accelKeyToken);
 
                             // Configure settings per UI-SPEC Phase-Specific Note 5
-                            wil::com_ptr<ICoreWebView2Settings> settings;
-                            m_webview->get_Settings(&settings);
-                            settings->put_AreDefaultContextMenusEnabled(FALSE);
-                            settings->put_AreDevToolsEnabled(FALSE);
-                            settings->put_IsStatusBarEnabled(FALSE);
+                            // WR-04: Check SUCCEEDED and non-null before dereferencing — get_Settings
+                            // can fail if the webview is being torn down concurrently.
+                            {
+                                wil::com_ptr<ICoreWebView2Settings> settings;
+                                if (SUCCEEDED(m_webview->get_Settings(&settings)) && settings) {
+                                    settings->put_AreDefaultContextMenusEnabled(FALSE);
+                                    settings->put_AreDevToolsEnabled(FALSE);
+                                    settings->put_IsStatusBarEnabled(FALSE);
+                                }
+                            }
 
                             // Set up virtual host mapping per Pattern 6
                             wil::com_ptr<ICoreWebView2_3> webview3;
