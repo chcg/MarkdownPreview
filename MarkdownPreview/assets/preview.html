@@ -140,9 +140,19 @@
     // Strips content between leading --- delimiters before parse
     // =========================================================================
     function stripFrontmatter(markdown) {
+        // Strip UTF-8 BOM (U+FEFF) if present — Scintilla returns raw bytes including BOM.
+        // Without this, files with BOM skip frontmatter detection entirely.
+        if (markdown.charCodeAt(0) === 0xFEFF) {
+            markdown = markdown.slice(1);
+        }
         if (markdown.startsWith('---')) {
-            var end = markdown.indexOf('\n---', 3);
-            if (end !== -1) return markdown.slice(end + 4).trimStart();
+            // Match both \n--- and \r\n--- as the closing delimiter (WR-05).
+            var end = markdown.search(/\r?\n---(\r?\n|$)/);
+            if (end !== -1) {
+                // Advance past the matched \n--- (plus optional trailing \r\n)
+                var afterDelim = markdown.indexOf('\n', end + 1) + 1;
+                return markdown.slice(afterDelim).trimStart();
+            }
         }
         return markdown;
     }
@@ -194,7 +204,7 @@
     // =========================================================================
     function rewriteImagePaths(markdownText) {
         return markdownText.replace(
-            /!\[([^\]]*)\]\((?!https?:\/\/|\/\/|data:)(\.?\.?\/?)([^)]+)\)/g,
+            /!\[([^\]]*)\]\((?!https?:\/\/|\/\/|data:)(\.?\.?\/?)([^)\s][^)]*(?:\([^)]*\)[^)]*)*)\)/g,
             function(match, alt, prefix, rest) {
                 // Normalize: strip leading ./ if present
                 var normalized = (prefix + rest).replace(/^\.\//, '');
