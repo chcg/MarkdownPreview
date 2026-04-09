@@ -140,9 +140,35 @@ void onScnModified(SCNotification* notification) {
     }
 }
 
-// Phase 2: Called on SCN_UPDATEUI — placeholder for scroll sync (Plan 02-03)
+// Phase 2 Plan 03: Called on SCN_UPDATEUI — scroll sync (SCRL-01)
 void onScnUpdateUi(SCNotification* notification) {
-    // Scroll sync implementation deferred to Plan 02-03
-    // Plan 02-03 will add scrollToLine call here using SC_UPDATE_SELECTION | SC_UPDATE_CONTENT
-    (void)notification;
+    // Only sync on caret/selection changes — not on scroll events
+    // SC_UPDATE_SELECTION = 0x02; SC_UPDATE_CONTENT = 0x01
+    if (!(notification->updated & (SC_UPDATE_SELECTION | SC_UPDATE_CONTENT))) return;
+
+    // Get active Scintilla handle
+    int sciId = 0;
+    ::SendMessage(nppData._nppHandle, NPPM_GETCURRENTSCINTILLA, 0,
+        reinterpret_cast<LPARAM>(&sciId));
+    HWND hSci = (sciId == 0) ? nppData._scintillaMainHandle
+                              : nppData._scintillaSecondHandle;
+
+    // Get byte position of caret, then convert to 0-indexed line number
+    Sci_Position caretPos = static_cast<Sci_Position>(
+        ::SendMessage(hSci, SCI_GETCURRENTPOS, 0, 0));
+    int caretLine = static_cast<int>(
+        ::SendMessage(hSci, SCI_LINEFROMPOSITION,
+            static_cast<WPARAM>(caretPos), 0));
+
+    // Only send scroll if a .md file is active and panel is visible
+    if (!g_previewPanel.isVisible()) return;
+    wchar_t path[MAX_PATH] = {};
+    ::SendMessage(nppData._nppHandle, NPPM_GETFULLCURRENTPATH, MAX_PATH,
+        reinterpret_cast<LPARAM>(path));
+    std::wstring filePath(path);
+    bool isMd = filePath.size() >= 3 &&
+        (_wcsicmp(filePath.c_str() + filePath.size() - 3, L".md") == 0);
+    if (isMd) {
+        g_previewPanel.scrollToLine(caretLine);
+    }
 }

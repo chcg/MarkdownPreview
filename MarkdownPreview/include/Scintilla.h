@@ -58,3 +58,9 @@ struct SCNotification {
 #define SC_MOD_DELETETEXT       0x0002
 #define SC_PERFORMED_UNDO       0x0020
 #define SC_PERFORMED_REDO       0x0040
+
+// SCN_UPDATEUI updated field bitmask values (Plan 02-03 scroll sync)
+#define SC_UPDATE_CONTENT      0x01
+#define SC_UPDATE_SELECTION    0x02
+#define SC_UPDATE_V_SCROLL     0x04
+#define SC_UPDATE_H_SCROLL     0x08

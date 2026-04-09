@@ -23,6 +23,8 @@ public:
     void scheduleRender();                                // start/restart debounce timer (called from SCN_MODIFIED)
     void showIdle();                                      // navigate back to welcome.html (non-.md file activated)
     void setNppHandle(HWND nppHandle) { m_nppHandle = nppHandle; }  // already set in init(); no-op if already set
+    void scrollToLine(int line);                          // post {type:"scroll", line:N} to JS
+    void updateFileVirtualHost(const std::wstring& filePath);  // map file.mdpreview to file's parent dir
 
 private:
     void createHostWindow();

@@ -216,11 +216,29 @@
     }
 
     // =========================================================================
-    // Scroll sync stub (D-04, SCRL-01) — complete implementation in Plan 02-03
+    // Scroll sync (D-04, SCRL-01) — Plan 02-03 implementation
+    // Finds the element with the highest data-line value that is <= target line.
+    // Elements are in document order so we can stop at the first element > target.
+    // Per UI-SPEC Interaction Contract D-04: smooth scroll, block start.
     // =========================================================================
     function scrollToLine(line) {
-        // Plan 02-03 implements full data-line nearest-element scroll logic
-        // Stub: no-op (safe to call before Plan 02-03 upgrades this function)
+        var elements = document.querySelectorAll('[data-line]');
+        if (!elements.length) return;
+
+        var best = null;
+        for (var i = 0; i < elements.length; i++) {
+            var elLine = parseInt(elements[i].getAttribute('data-line'), 10);
+            if (elLine <= line) {
+                best = elements[i];
+            } else {
+                break;
+            }
+        }
+        // Per UI-SPEC Interaction Contract D-04: smooth scroll, block start
+        if (best) {
+            best.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        // If no element found: no scroll, no error (per D-04 spec)
     }
 
     // =========================================================================

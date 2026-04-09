@@ -356,6 +356,45 @@ void PreviewPanel::showIdle() {
     }
 }
 
+// Phase 2 Plan 03: Post scroll message to JS — {type:"scroll", line:N}
+void PreviewPanel::scrollToLine(int line) {
+    if (!m_webview || !m_webview2Initialized) return;
+    nlohmann::json j;
+    j["type"] = "scroll";
+    j["line"] = line;
+    std::string jsonStr = j.dump();
+    std::wstring wjson(jsonStr.begin(), jsonStr.end());
+    m_webview->PostWebMessageAsJson(wjson.c_str());
+}
+
+// Phase 2 Plan 03: Map file.mdpreview virtual host to active file's parent directory (REND-05, D-08)
+// Uses ICoreWebView2_3 ClearVirtualHostNameToFolderMapping + SetVirtualHostNameToFolderMapping
+// DENY_CORS prevents cross-origin requests (T-02-10 mitigation)
+void PreviewPanel::updateFileVirtualHost(const std::wstring& filePath) {
+    if (!m_webview) return;
+
+    // Extract parent directory from file path
+    std::wstring dir = filePath;
+    size_t pos = dir.find_last_of(L"\\/");
+    if (pos != std::wstring::npos) {
+        dir = dir.substr(0, pos);
+    } else {
+        return;  // no directory component — skip
+    }
+
+    wil::com_ptr<ICoreWebView2_3> webview3;
+    m_webview->QueryInterface(IID_PPV_ARGS(&webview3));
+    if (!webview3) return;
+
+    // Clear existing mapping before setting new one (Pitfall 3 mitigation — timing)
+    // ClearVirtualHostNameToFolderMapping is safe even if no prior mapping exists
+    webview3->ClearVirtualHostNameToFolderMapping(L"file.mdpreview");
+    webview3->SetVirtualHostNameToFolderMapping(
+        L"file.mdpreview",
+        dir.c_str(),
+        COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_DENY_CORS);
+}
+
 // Phase 2: Dispatch JS->C++ messages (T-02-04 mitigation: parse with try/catch, no shell/exec)
 void PreviewPanel::handleJsMessage(const std::wstring& message) {
     // Convert wstring to UTF-8 for nlohmann parsing
