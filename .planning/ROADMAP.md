@@ -45,11 +45,14 @@ Plans:
   3. Local images display using correct relative paths, and YAML frontmatter is hidden from output
   4. Preview uses dark or light theme matching Notepad++ and accepts user-provided custom CSS
   5. Scrolling in the editor keeps the preview in sync, and the user can export to a standalone HTML file with inlined CSS
-**Plans**: TBD
+**Plans**: 4 plans
 **UI hint**: yes
 
 Plans:
-(TBD)
+- [ ] 02-01-PLAN.md — C++ notification handlers (auto-open, debounce render, theme detection) + header constants
+- [ ] 02-02-PLAN.md — preview.html JS pipeline (markdown-it, highlight.js, YAML strip, theme swap, custom CSS) + asset downloads
+- [ ] 02-03-PLAN.md — Scroll sync (SCN_UPDATEUI → scrollToLine) + local image resolution (file.mdpreview virtual host)
+- [ ] 02-04-PLAN.md — HTML export end-to-end (JS DOM serialization + C++ file write + Export menu item)
 
 ### Phase 3: Extended Rendering
 **Goal**: Preview supports math equations, Mermaid diagrams, footnotes, copy-code buttons, zoom controls, and PDF export -- surpassing all existing Notepad++ markdown plugins
@@ -87,6 +90,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Plugin Foundation | 0/3 | Planning complete | - |
-| 2. Core Preview | 0/TBD | Not started | - |
+| 2. Core Preview | 0/4 | Planning complete | - |
 | 3. Extended Rendering | 0/TBD | Not started | - |
 | 4. Polish & Publication | 0/TBD | Not started | - |
