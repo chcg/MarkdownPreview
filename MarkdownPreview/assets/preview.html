@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MarkdownPreview</title>
+
+    <!-- Base theme stylesheets — swapped by setTheme() -->
+    <!-- Light theme is default; C++ sends initial theme on ready -->
+    <link id="md-theme"   rel="stylesheet" href="https://appassets.mdpreview/github-markdown-light.css">
+    <link id="hljs-theme" rel="stylesheet" href="https://appassets.mdpreview/hljs-github.min.css">
+
+    <!-- Custom CSS placeholder — replaced by setCustomCss() or removed if no custom CSS -->
+    <!-- Absent by default; injected as <style id="custom-css"> when C++ sends customCss -->
+
+    <style>
+        /* CSS custom properties — spacing scale per UI-SPEC */
+        :root {
+            --space-xs: 4px;
+            --space-sm: 8px;
+            --space-md: 16px;
+            --space-lg: 24px;
+            --space-xl: 32px;
+            --space-2xl: 48px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+            font-family: "Segoe UI", system-ui, sans-serif;
+        }
+
+        /* Light body background (github-markdown-css light = #ffffff) */
+        body {
+            background: #FFFFFF;
+        }
+
+        /* Dark body background applied when data-theme="dark" on body */
+        body[data-theme="dark"] {
+            background: #0D1117;
+        }
+
+        /* Content wrapper — matches github-markdown-css expected structure */
+        .markdown-body {
+            box-sizing: border-box;
+            min-width: 200px;
+            max-width: 980px;
+            margin: 0 auto;
+            padding: var(--space-xl);  /* 32px all sides per UI-SPEC */
+        }
+
+        /* Error state — shown when rendering fails */
+        #error-state {
+            display: none;
+            padding: var(--space-xl);
+            font-family: "Segoe UI", system-ui, sans-serif;
+        }
+        #error-state h2 {
+            font-size: 28px;
+            font-weight: 600;
+            line-height: 1.2;
+            color: #CF222E;  /* Destructive light per UI-SPEC */
+        }
+        body[data-theme="dark"] #error-state h2 {
+            color: #F85149;  /* Destructive dark per UI-SPEC */
+        }
+        #error-state p {
+            font-size: 16px;
+            font-weight: 400;
+            line-height: 1.5;
+            color: #656D76;
+            margin-top: var(--space-md);
+        }
+        #error-detail {
+            font-size: 13px;
+            font-weight: 400;
+            line-height: 1.4;
+            color: #656D76;
+            margin-top: var(--space-sm);
+            font-family: monospace;
+        }
+    </style>
+
+    <!-- JS libraries (loaded synchronously — no defer, order matters) -->
+    <script src="https://appassets.mdpreview/markdown-it.min.js"></script>
+    <script src="https://appassets.mdpreview/markdown-it-task-lists.min.js"></script>
+    <script src="https://appassets.mdpreview/highlight.min.js"></script>
+</head>
+<body>
+    <!-- Primary preview area -->
+    <div id="preview" class="markdown-body"></div>
+
+    <!-- Error state (shown on render failure) -->
+    <div id="error-state">
+        <h2>Preview unavailable</h2>
+        <p>An error occurred while rendering this document. Check your Markdown syntax and try again.</p>
+        <div id="error-detail"></div>
+    </div>
+
+    <script>
+    // =========================================================================
+    // markdown-it initialization
+    // =========================================================================
+    // Default preset enables: tables, strikethrough, linkify (GFM-compatible)
+    // html: false — do not pass raw HTML through (security — ASVS L1, T-02-06)
+    // linkify: true — auto-detect URLs (REND-03)
+    var md = window.markdownit({
+        html: false,
+        linkify: true,
+        typographer: false
+    });
+
+    // Apply markdown-it-task-lists plugin (REND-03 GFM task lists)
+    // The UMD global is window.markdownitTaskLists (verified from downloaded file header)
+    if (window.markdownitTaskLists) {
+        md.use(window.markdownitTaskLists, { enabled: true });
+    }
+
+    // =========================================================================
+    // Source map: inject data-line="N" on block-level tokens (D-04)
+    // Used by scroll sync in Plan 02-03
+    // token.map is [lineStart, lineEnd] — 0-indexed, matching Scintilla
+    // =========================================================================
+    md.core.ruler.push('source_map', function(state) {
+        for (var i = 0; i < state.tokens.length; i++) {
+            var token = state.tokens[i];
+            if (token.map && token.map.length >= 2 && !token.type.endsWith('_close')) {
+                token.attrSet('data-line', String(token.map[0]));
+            }
+        }
+    });
+
+    // =========================================================================
+    // YAML frontmatter strip (D-03, REND-06)
+    // Strips content between leading --- delimiters before parse
+    // =========================================================================
+    function stripFrontmatter(markdown) {
+        if (markdown.startsWith('---')) {
+            var end = markdown.indexOf('\n---', 3);
+            if (end !== -1) return markdown.slice(end + 4).trimStart();
+        }
+        return markdown;
+    }
+
+    // =========================================================================
+    // Theme management (D-05, D-06, THME-01, THME-03)
+    // Swaps both the github-markdown and highlight.js CSS links as a pair
+    // Does NOT use prefers-color-scheme — NPP controls theme, not OS
+    // =========================================================================
+    function setTheme(isDark) {
+        var mdTheme   = document.getElementById('md-theme');
+        var hljsTheme = document.getElementById('hljs-theme');
+        if (isDark) {
+            mdTheme.href   = 'https://appassets.mdpreview/github-markdown-dark.css';
+            hljsTheme.href = 'https://appassets.mdpreview/hljs-github-dark.min.css';
+            document.body.setAttribute('data-theme', 'dark');
+        } else {
+            mdTheme.href   = 'https://appassets.mdpreview/github-markdown-light.css';
+            hljsTheme.href = 'https://appassets.mdpreview/hljs-github.min.css';
+            document.body.removeAttribute('data-theme');
+        }
+    }
+
+    // =========================================================================
+    // Custom CSS injection (D-07, THME-02)
+    // C++ reads custom.css content and sends it in the render message as customCss field
+    // Injected as inline <style> after base theme (cascade: github-markdown -> hljs -> custom)
+    // =========================================================================
+    function setCustomCss(cssText) {
+        var existing = document.getElementById('custom-css');
+        if (cssText && cssText.trim().length > 0) {
+            if (!existing) {
+                existing = document.createElement('style');
+                existing.id = 'custom-css';
+                document.head.appendChild(existing);
+            }
+            existing.textContent = cssText;
+        } else {
+            if (existing) existing.remove();
+        }
+    }
+
+    // =========================================================================
+    // Render pipeline (REND-02, REND-03, REND-04, REND-06)
+    // =========================================================================
+    function renderMarkdown(markdown, filePath, customCss) {
+        var preview     = document.getElementById('preview');
+        var errorEl     = document.getElementById('error-state');
+        var errorDetail = document.getElementById('error-detail');
+
+        try {
+            var stripped = stripFrontmatter(markdown);
+            var html = md.render(stripped);
+            preview.innerHTML = html;
+            errorEl.style.display = 'none';
+
+            // Apply custom CSS after render (so it is in effect for the new content)
+            setCustomCss(customCss || null);
+
+            // Syntax highlighting: highlight all code blocks (REND-04)
+            // hljs.highlightAll() is the correct call (not initHighlightingOnLoad)
+            if (window.hljs) {
+                window.hljs.highlightAll();
+            }
+        } catch (err) {
+            // Show error state per UI-SPEC Copywriting Contract
+            preview.innerHTML = '';
+            errorEl.style.display = 'block';
+            errorDetail.textContent = err && err.message ? err.message : String(err);
+        }
+    }
+
+    // =========================================================================
+    // Scroll sync stub (D-04, SCRL-01) — complete implementation in Plan 02-03
+    // =========================================================================
+    function scrollToLine(line) {
+        // Plan 02-03 implements full data-line nearest-element scroll logic
+        // Stub: no-op (safe to call before Plan 02-03 upgrades this function)
+    }
+
+    // =========================================================================
+    // Export stub (D-09, EXPT-01) — complete implementation in Plan 02-04
+    // =========================================================================
+    function exportHtml() {
+        // Plan 02-04 implements full base64 image inlining and CSS collection
+        // Stub: no-op (safe to call before Plan 02-04 upgrades this function)
+    }
+
+    // =========================================================================
+    // WebView2 message dispatcher
+    // event.data is already parsed to a JS object (PostWebMessageAsJson)
+    // =========================================================================
+    window.chrome.webview.addEventListener('message', function(event) {
+        var msg = event.data;
+        if (!msg || !msg.type) return;
+
+        switch (msg.type) {
+            case 'render':
+                renderMarkdown(
+                    msg.markdown  || '',
+                    msg.filePath  || '',
+                    msg.customCss || null
+                );
+                break;
+            case 'theme':
+                setTheme(!!msg.dark);
+                break;
+            case 'scroll':
+                scrollToLine(msg.line || 0);
+                break;
+            case 'export':
+                exportHtml();
+                break;
+        }
+    });
+    </script>
+</body>
+</html>
