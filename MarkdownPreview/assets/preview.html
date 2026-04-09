@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MarkdownPreview</title>
 
+    <!-- KaTeX math rendering styles (XRND-01) — must load before katex.min.js -->
+    <link rel="stylesheet" href="https://appassets.mdpreview/katex.min.css">
+
     <!-- Base theme stylesheets — swapped by setTheme() -->
     <!-- Light theme is default; C++ sends initial theme on ready -->
     <link id="md-theme"   rel="stylesheet" href="https://appassets.mdpreview/github-markdown-light.css">
@@ -127,6 +130,12 @@
     <script src="https://appassets.mdpreview/markdown-it.min.js"></script>
     <script src="https://appassets.mdpreview/markdown-it-task-lists.min.js"></script>
     <script src="https://appassets.mdpreview/highlight.min.js"></script>
+    <!-- KaTeX math engine + texmath markdown-it plugin (XRND-01) -->
+    <!-- Use markdown-it-texmath (texmath.js) NOT @vscode/markdown-it-katex — the latter has no browser UMD build -->
+    <script src="https://appassets.mdpreview/katex.min.js"></script>
+    <script src="https://appassets.mdpreview/texmath.js"></script>
+    <!-- Footnotes with numbering and back-references (XRND-03) -->
+    <script src="https://appassets.mdpreview/markdown-it-footnote.min.js"></script>
 </head>
 <body>
     <!-- Idle/welcome state — visible on load; hidden once first render arrives -->
@@ -165,6 +174,24 @@
     // The UMD global is window.markdownitTaskLists (verified from downloaded file header)
     if (window.markdownitTaskLists) {
         md.use(window.markdownitTaskLists, { enabled: true });
+    }
+
+    // Apply markdown-it-footnote plugin (XRND-03)
+    // UMD global is window.markdownitFootnote (verified from dist/markdown-it-footnote.min.js UMD wrapper)
+    if (window.markdownitFootnote) {
+        md.use(window.markdownitFootnote);
+    }
+
+    // Apply markdown-it-texmath plugin for KaTeX math rendering (XRND-01)
+    // texmath.js exposes window.texmath; KaTeX engine is window.katex
+    // throwOnError: false — malformed math renders inline red error span instead of crashing render (Pitfall 3)
+    // delimiters: 'dollars' — handles $...$ inline and $$...$$ block (per CONTEXT.md XRND-01)
+    if (window.texmath && window.katex) {
+        md.use(window.texmath, {
+            engine: window.katex,
+            delimiters: 'dollars',
+            katexOptions: { throwOnError: false }
+        });
     }
 
     // =========================================================================
