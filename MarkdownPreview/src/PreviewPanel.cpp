@@ -620,6 +620,15 @@ void PreviewPanel::triggerPdfExport() {
         pdfPath += L".pdf";
     }
 
+    // CR-01: Validate that the PDF output path stays within the same directory as the source file.
+    // Prevents path traversal if m_currentFilePath contains directory traversal components
+    // (e.g., from a crafted NPPM_GETFULLCURRENTPATH response on a network share).
+    {
+        std::wstring pdfDir = pdfPath.substr(0, pdfPath.find_last_of(L"\\/"));
+        std::wstring srcDir = m_currentFilePath.substr(0, m_currentFilePath.find_last_of(L"\\/"));
+        if (_wcsicmp(pdfDir.c_str(), srcDir.c_str()) != 0) return;  // reject escaped path
+    }
+
     // D-08: Extract basename of .md file for HeaderTitle
     std::wstring basename = m_currentFilePath;
     size_t slashPos = basename.find_last_of(L"\\/");
