@@ -332,6 +332,8 @@ void PreviewPanel::initWebView2() {
                                     [this](ICoreWebView2* /*sender*/,
                                            ICoreWebView2NavigationCompletedEventArgs* /*args*/) -> HRESULT {
                                         applyInitialZoom(m_zoomLevel);
+                                        // Replay stored theme: setTheme() may have been called before WebView2 was ready.
+                                        setTheme(m_isDark);
                                         if (!m_pendingFilePath.empty()) {
                                             std::wstring pending = m_pendingFilePath;
                                             m_pendingFilePath.clear();
@@ -422,9 +424,10 @@ std::wstring PreviewPanel::getCurrentText() {
     // nppData is defined in PluginDefinition.cpp; accessed via extern declaration above
     HWND hSci = (sciId == 0) ? nppData._scintillaMainHandle : nppData._scintillaSecondHandle;
 
-    int len = static_cast<int>(::SendMessage(hSci, SCI_GETLENGTH, 0, 0));
+    LRESULT len = ::SendMessage(hSci, SCI_GETLENGTH, 0, 0);
+    if (len < 0) return L"";   // guard: should never happen but be safe
     std::string utf8Text(static_cast<size_t>(len) + 1, '\0');
-    ::SendMessage(hSci, SCI_GETTEXT, static_cast<WPARAM>(len + 1),
+    ::SendMessage(hSci, SCI_GETTEXT, static_cast<WPARAM>(static_cast<size_t>(len) + 1),
         reinterpret_cast<LPARAM>(utf8Text.data()));
     utf8Text.resize(static_cast<size_t>(len));
 
@@ -470,24 +473,18 @@ void PreviewPanel::renderMarkdown(const std::wstring& filePath) {
     j["markdown"] = utf8Markdown;
     j["filePath"] = utf8FilePath;
 
-    // THME-02 (D-07): Read custom CSS from %APPDATA%\Notepad++\plugins\config\MarkdownPreview\custom.css
+    // THME-02 (D-07): Read custom CSS from m_configPath\custom.css
+    // m_configPath is set by NPPM_GETPLUGINSCONFIGDIR in setConfigPath() during onNppReady.
     // Absence of the file is silently ignored per D-07 — send JSON null.
     {
-        wchar_t appData[MAX_PATH] = {};
-        DWORD ret = ::GetEnvironmentVariableW(L"APPDATA", appData, MAX_PATH);
-        if (ret > 0 && ret < MAX_PATH) {
-            std::wstring cssPath = std::wstring(appData)
-                + L"\\Notepad++\\plugins\\config\\MarkdownPreview\\custom.css";
-            std::ifstream cssFile(cssPath, std::ios::in | std::ios::binary);
-            if (cssFile.is_open()) {
-                std::string cssContent((std::istreambuf_iterator<char>(cssFile)),
-                                        std::istreambuf_iterator<char>());
-                cssFile.close();
-                if (!cssContent.empty()) {
-                    j["customCss"] = cssContent;
-                } else {
-                    j["customCss"] = nullptr;
-                }
+        std::wstring cssPath = m_configPath + L"\\custom.css";
+        std::ifstream cssFile(cssPath, std::ios::in | std::ios::binary);
+        if (cssFile.is_open()) {
+            std::string cssContent((std::istreambuf_iterator<char>(cssFile)),
+                                    std::istreambuf_iterator<char>());
+            cssFile.close();
+            if (!cssContent.empty()) {
+                j["customCss"] = cssContent;
             } else {
                 j["customCss"] = nullptr;
             }
