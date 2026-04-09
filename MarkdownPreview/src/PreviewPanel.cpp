@@ -252,6 +252,13 @@ void PreviewPanel::initWebView2() {
                                         // Suppress WebView2 built-in zoom behavior
                                         args->put_Handled(TRUE);
 
+                                        // WR-02: Block zoom changes while PDF export is in flight.
+                                        // Allowing zoom during the reset/restore cycle causes m_zoomLevel
+                                        // and the JS zoom to diverge after the completion callback restores.
+                                        if (m_printToPdfInProgress) {
+                                            return S_OK;
+                                        }
+
                                         // Compute new zoom level with 10% step (D-04)
                                         const float step = 0.1f;
                                         const float minZoom = 0.8f;   // 80% per THME-04
