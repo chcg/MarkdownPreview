@@ -63,11 +63,14 @@ Plans:
   2. Mermaid fenced code blocks render as diagrams (flowcharts, sequence diagrams, Gantt charts)
   3. Footnotes render with proper numbering and back-references, and code blocks have a copy-to-clipboard button
   4. User can zoom the preview (80-800%) and export to PDF with page numbers, headers, and footers
-**Plans**: TBD
+**Plans**: 4 plans
 **UI hint**: yes
 
 Plans:
-(TBD)
+- [ ] 03-01-PLAN.md — Asset downloads (KaTeX, texmath, markdown-it-footnote) + preview.html KaTeX/footnote plugin init
+- [ ] 03-02-PLAN.md — Mermaid IIFE bundle download + preview.html Mermaid rendering + copy-to-clipboard buttons
+- [ ] 03-03-PLAN.md — Settings zoomLevel field + PreviewPanel AcceleratorKeyPressed zoom + preview.html zoom message case
+- [ ] 03-04-PLAN.md — PDF export via ICoreWebView2_7::PrintToPdf + "Export as PDF" menu item (Ctrl+Shift+P)
 
 ### Phase 4: Polish & Publication
 **Goal**: Full bidirectional navigation between editor and preview, table of contents, and publish-ready packaging for the Notepad++ plugin list
@@ -91,5 +94,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 |-------|----------------|--------|-----------|
 | 1. Plugin Foundation | 0/3 | Planning complete | - |
 | 2. Core Preview | 0/4 | Planning complete | - |
-| 3. Extended Rendering | 0/TBD | Not started | - |
+| 3. Extended Rendering | 0/4 | Planning complete | - |
 | 4. Polish & Publication | 0/TBD | Not started | - |
