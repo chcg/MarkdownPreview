@@ -261,11 +261,87 @@
     }
 
     // =========================================================================
-    // Export stub (D-09, EXPT-01) — complete implementation in Plan 02-04
+    // Export implementation (D-09, EXPT-01) — Plan 02-04
+    // Collects CSS from <link> elements, inlines custom CSS, clones the preview
+    // div, base64-encodes local images, serializes to a standalone HTML document,
+    // and sends the result to C++ via postMessage({type:'exportReady', html:...}).
     // =========================================================================
-    function exportHtml() {
-        // Plan 02-04 implements full base64 image inlining and CSS collection
-        // Stub: no-op (safe to call before Plan 02-04 upgrades this function)
+
+    // Helper: convert a blob to a base64 data URI via FileReader
+    function blobToDataUrl(blob) {
+        return new Promise(function(resolve, reject) {
+            var reader = new FileReader();
+            reader.onload = function() { resolve(reader.result); };
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    }
+
+    // Full export implementation (D-09, EXPT-01)
+    async function exportHtml() {
+        try {
+            // Step 1: Collect CSS text from all <link rel="stylesheet"> elements
+            var links = Array.from(document.querySelectorAll('link[rel=stylesheet]'));
+            var cssTexts = await Promise.all(
+                links.map(function(link) {
+                    return fetch(link.href)
+                        .then(function(r) { return r.text(); })
+                        .catch(function() { return ''; });  // ignore fetch errors
+                })
+            );
+
+            // Step 2: Collect custom CSS from inline <style id="custom-css"> if present
+            var customStyle = document.getElementById('custom-css');
+            var customCssText = customStyle ? customStyle.textContent : '';
+
+            var inlinedCss = cssTexts.join('\n') + '\n' + customCssText;
+
+            // Step 3: Clone preview div to avoid mutating live DOM
+            var preview = document.getElementById('preview');
+            var clone = preview.cloneNode(true);
+
+            // Step 4: Convert local images to base64 data URIs in the clone
+            var images = Array.from(clone.querySelectorAll('img'));
+            await Promise.all(images.map(async function(img) {
+                var originalSrc = img.getAttribute('src') || '';
+                // Only process non-data-URI sources (data: URIs are already inline)
+                if (originalSrc.startsWith('data:')) return;
+                try {
+                    var resp = await fetch(originalSrc);
+                    if (!resp.ok) return;  // leave broken images as-is
+                    var blob = await resp.blob();
+                    img.src = await blobToDataUrl(blob);
+                } catch (e) {
+                    // Remote image or unresolvable — leave src as original URL
+                }
+            }));
+
+            // Step 5: Build standalone HTML document
+            // Include current theme class on body for correct rendering
+            var isDark = document.body.getAttribute('data-theme') === 'dark';
+            var bodyClass = 'markdown-body';
+            var html = '<!DOCTYPE html>\n'
+                + '<html lang="en">\n'
+                + '<head>\n'
+                + '<meta charset="UTF-8">\n'
+                + '<meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
+                + '<title>Exported Markdown</title>\n'
+                + '<style>\n' + inlinedCss + '\n</style>\n'
+                + '</head>\n'
+                + '<body class="' + bodyClass + '"' + (isDark ? ' data-theme="dark"' : '') + '>\n'
+                + clone.outerHTML + '\n'
+                + '</body>\n'
+                + '</html>';
+
+            // Step 6: Send to C++ for file I/O (D-10)
+            window.chrome.webview.postMessage(
+                JSON.stringify({ type: 'exportReady', html: html })
+            );
+        } catch (err) {
+            // Export failed — do not crash; C++ will receive no exportReady message
+            // and nothing will be written (silent failure in Phase 2)
+            console.error('Export failed:', err);
+        }
     }
 
     // =========================================================================
