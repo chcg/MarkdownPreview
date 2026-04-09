@@ -472,6 +472,12 @@
             case 'export':
                 exportHtml();
                 break;
+            case 'zoom':
+                // THME-04: apply zoom level to entire document body
+                // msg.level is a float: 0.8 (80%) to 8.0 (800%)
+                // CSS zoom property scales the rendering viewport in Chromium/WebView2
+                document.body.style.zoom = String(msg.level);
+                break;
         }
     });
     </script>
