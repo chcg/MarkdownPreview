@@ -17,6 +17,13 @@ public:
     bool isVisible() const;
     HWND getHwnd() const;
 
+    // Phase 2: render/theme/idle public interface
+    void renderMarkdown(const std::wstring& filePath);   // retrieve text from Scintilla, post render message
+    void setTheme(bool isDark);                           // post {type:"theme", dark:bool} message
+    void scheduleRender();                                // start/restart debounce timer (called from SCN_MODIFIED)
+    void showIdle();                                      // navigate back to welcome.html (non-.md file activated)
+    void setNppHandle(HWND nppHandle) { m_nppHandle = nppHandle; }  // already set in init(); no-op if already set
+
 private:
     void createHostWindow();
     void registerPanel();
@@ -29,6 +36,13 @@ private:
     void resizeWebView2();
     std::wstring getAssetsPath();
     std::wstring getUserDataPath();
+
+    // Phase 2: render pipeline private helpers
+    void doRender();                                       // actual render after debounce fires
+    std::wstring getCurrentText();                         // retrieves text from active Scintilla view
+    void handleJsMessage(const std::wstring& message);    // dispatch JS->C++ messages
+
+    static const UINT_PTR DEBOUNCE_TIMER_ID = 1;
 
     HINSTANCE m_hInst = nullptr;
     HWND m_nppHandle = nullptr;
@@ -43,4 +57,10 @@ private:
     HWND m_hFallback = nullptr;  // SysLink control when WebView2 missing
     bool m_webview2Available = false;
     bool m_webview2Initialized = false;
+
+    // Phase 2: state members
+    bool m_renderPending = false;
+    bool m_isDark = false;
+    std::wstring m_currentFilePath;
+    EventRegistrationToken m_webMessageReceivedToken = {};
 };

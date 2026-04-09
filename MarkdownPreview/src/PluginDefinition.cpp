@@ -1,6 +1,7 @@
 // This file is part of MarkdownPreview plugin for Notepad++
 
 #include "PluginDefinition.h"
+#include "Scintilla.h"
 #include <cstring>
 #include <string>
 #include <objbase.h>
@@ -62,6 +63,14 @@ void onNppReady() {
     if (g_settings.panelVisible) {
         g_previewPanel.toggle(funcItems[0]._cmdID);
     }
+
+    // Register for SCN_MODIFIED forwarding (defensive — fails silently on older NPP)
+    ::SendMessage(nppData._nppHandle, NPPM_ADDSCNMODIFIEDFLAGS,
+        SC_MOD_INSERTTEXT | SC_MOD_DELETETEXT, 0);
+
+    // Set initial theme state (THME-03)
+    bool isDark = (BOOL)::SendMessage(nppData._nppHandle, NPPM_ISDARKMODEENABLED, 0, 0) != FALSE;
+    g_previewPanel.setTheme(isDark);
 }
 
 void onNppShutdown() {
@@ -83,4 +92,57 @@ void togglePreview() {
     if (!g_configPath.empty()) {
         g_settings.save(g_configPath);
     }
+}
+
+// Phase 2: Called when a buffer is activated (file switched or opened)
+void onBufferActivated(UINT_PTR bufferId) {
+    wchar_t path[MAX_PATH] = {};
+    ::SendMessage(nppData._nppHandle, NPPM_GETFULLPATHFROMBUFFERID,
+        static_cast<WPARAM>(bufferId), reinterpret_cast<LPARAM>(path));
+
+    std::wstring filePath(path);
+    // Check .md extension (case-insensitive)
+    bool isMd = filePath.size() >= 3 &&
+        (_wcsicmp(filePath.c_str() + filePath.size() - 3, L".md") == 0);
+
+    if (isMd) {
+        // D-01: auto-open panel whenever a .md file is activated, even if previously closed
+        if (!g_previewPanel.isVisible()) {
+            g_previewPanel.toggle(funcItems[0]._cmdID);
+        }
+        g_previewPanel.renderMarkdown(filePath);
+    } else {
+        // Non-.md file: navigate preview back to idle welcome page
+        if (g_previewPanel.isVisible()) {
+            g_previewPanel.showIdle();
+        }
+    }
+}
+
+// Phase 2: Called when Notepad++ dark/light mode changes (THME-03)
+void onDarkModeChanged() {
+    bool isDark = (BOOL)::SendMessage(nppData._nppHandle, NPPM_ISDARKMODEENABLED, 0, 0) != FALSE;
+    g_previewPanel.setTheme(isDark);
+}
+
+// Phase 2: Called on SCN_MODIFIED — trigger debounced re-render (REND-02)
+void onScnModified(SCNotification* notification) {
+    // Only react to text insertions and deletions (not fold/attribute changes)
+    if (!(notification->modificationType & (SC_MOD_INSERTTEXT | SC_MOD_DELETETEXT))) return;
+    // Only trigger if a .md file is currently active
+    wchar_t path[MAX_PATH] = {};
+    ::SendMessage(nppData._nppHandle, NPPM_GETFULLCURRENTPATH, MAX_PATH, reinterpret_cast<LPARAM>(path));
+    std::wstring filePath(path);
+    bool isMd = filePath.size() >= 3 &&
+        (_wcsicmp(filePath.c_str() + filePath.size() - 3, L".md") == 0);
+    if (isMd) {
+        g_previewPanel.scheduleRender();
+    }
+}
+
+// Phase 2: Called on SCN_UPDATEUI — placeholder for scroll sync (Plan 02-03)
+void onScnUpdateUi(SCNotification* notification) {
+    // Scroll sync implementation deferred to Plan 02-03
+    // Plan 02-03 will add scrollToLine call here using SC_UPDATE_SELECTION | SC_UPDATE_CONTENT
+    (void)notification;
 }

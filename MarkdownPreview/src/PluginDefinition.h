@@ -4,6 +4,7 @@
 
 #include "PluginInterface.h"
 #include "Notepad_plus_msgs.h"
+#include "Scintilla.h"
 #include "PreviewPanel.h"
 #include "Settings.h"
 
@@ -25,6 +26,12 @@ void commandMenuCleanUp();
 // Notification handler called from PluginMain.cpp
 void onNppReady();
 void onNppShutdown();
+
+// Phase 2 notification handlers (called from PluginMain.cpp beNotified)
+void onBufferActivated(UINT_PTR bufferId);
+void onDarkModeChanged();
+void onScnModified(SCNotification* notification);
+void onScnUpdateUi(SCNotification* notification);
 
 // Menu commands
 void togglePreview();

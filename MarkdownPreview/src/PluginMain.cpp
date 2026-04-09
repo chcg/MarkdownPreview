@@ -51,6 +51,22 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification* notification) {
     case NPPN_TBMODIFICATION:
         // Toolbar modification opportunity (for toolbar button, if needed)
         break;
+    case NPPN_BUFFERACTIVATED:
+        // File switched or opened — auto-open preview for .md files (REND-01)
+        onBufferActivated(notification->nmhdr.idFrom);
+        break;
+    case NPPN_DARKMODECHANGED:
+        // Notepad++ dark/light mode toggled (THME-03)
+        onDarkModeChanged();
+        break;
+    case SCN_MODIFIED:
+        // Text inserted or deleted — schedule debounced re-render (REND-02)
+        onScnModified(notification);
+        break;
+    case SCN_UPDATEUI:
+        // Caret/scroll position changed — placeholder for scroll sync (Plan 02-03)
+        onScnUpdateUi(notification);
+        break;
     default:
         break;
     }
