@@ -20,6 +20,21 @@
 
 using namespace Microsoft::WRL;
 
+// UTF-8 to wide string conversion helper.
+// Uses MultiByteToWideChar(CP_UTF8) — the only correct approach for editor content.
+// Never use std::wstring(str.begin(), str.end()) — that zero-extends bytes, corrupting
+// any multi-byte UTF-8 sequence (accented chars, CJK, emoji).
+static std::wstring Utf8ToWide(const std::string& utf8) {
+    if (utf8.empty()) return L"";
+    int wlen = ::MultiByteToWideChar(CP_UTF8, 0,
+        utf8.c_str(), static_cast<int>(utf8.size()), nullptr, 0);
+    if (wlen <= 0) return L"";
+    std::wstring w(static_cast<size_t>(wlen), L'\0');
+    ::MultiByteToWideChar(CP_UTF8, 0,
+        utf8.c_str(), static_cast<int>(utf8.size()), &w[0], wlen);
+    return w;
+}
+
 // Include PluginInterface.h for NppData struct definition.
 // We declare nppData extern directly (defined in PluginDefinition.cpp).
 // We do NOT include PluginDefinition.h here to avoid a circular dependency:
@@ -38,6 +53,12 @@ void PreviewPanel::init(HINSTANCE hInst, HWND nppHandle) {
 }
 
 void PreviewPanel::destroy() {
+    // Unregister WebMessageReceived before Close() to avoid use-after-free
+    // if the panel is destroyed and re-initialized rapidly (WR-01 mitigation).
+    if (m_webview && m_webMessageReceivedToken.value != 0) {
+        m_webview->remove_WebMessageReceived(m_webMessageReceivedToken);
+        m_webMessageReceivedToken = {};
+    }
     if (m_controller) {
         m_controller->Close();
         m_controller = nullptr;
@@ -257,7 +278,11 @@ void PreviewPanel::resizeWebView2() {
 
 std::wstring PreviewPanel::getUserDataPath() {
     wchar_t localAppData[MAX_PATH] = {};
-    GetEnvironmentVariableW(L"LOCALAPPDATA", localAppData, MAX_PATH);
+    DWORD ret = ::GetEnvironmentVariableW(L"LOCALAPPDATA", localAppData, MAX_PATH);
+    if (ret == 0 || ret >= MAX_PATH) {
+        // Fallback: place WebView2 data next to the DLL (always writable by plugin)
+        return getAssetsPath() + L"\\WebView2Data";
+    }
     return std::wstring(localAppData) + L"\\MarkdownPreview\\WebView2Data";
 }
 
@@ -333,8 +358,35 @@ void PreviewPanel::renderMarkdown(const std::wstring& filePath) {
     j["type"] = "render";
     j["markdown"] = utf8Markdown;
     j["filePath"] = utf8FilePath;
+
+    // THME-02 (D-07): Read custom CSS from %APPDATA%\Notepad++\plugins\config\MarkdownPreview\custom.css
+    // Absence of the file is silently ignored per D-07 — send JSON null.
+    {
+        wchar_t appData[MAX_PATH] = {};
+        DWORD ret = ::GetEnvironmentVariableW(L"APPDATA", appData, MAX_PATH);
+        if (ret > 0 && ret < MAX_PATH) {
+            std::wstring cssPath = std::wstring(appData)
+                + L"\\Notepad++\\plugins\\config\\MarkdownPreview\\custom.css";
+            std::ifstream cssFile(cssPath, std::ios::in | std::ios::binary);
+            if (cssFile.is_open()) {
+                std::string cssContent((std::istreambuf_iterator<char>(cssFile)),
+                                        std::istreambuf_iterator<char>());
+                cssFile.close();
+                if (!cssContent.empty()) {
+                    j["customCss"] = cssContent;
+                } else {
+                    j["customCss"] = nullptr;
+                }
+            } else {
+                j["customCss"] = nullptr;
+            }
+        } else {
+            j["customCss"] = nullptr;
+        }
+    }
+
     std::string jsonStr = j.dump();
-    std::wstring wjson(jsonStr.begin(), jsonStr.end());
+    std::wstring wjson = Utf8ToWide(jsonStr);
     m_webview->PostWebMessageAsJson(wjson.c_str());
 }
 
@@ -346,7 +398,7 @@ void PreviewPanel::setTheme(bool isDark) {
     j["type"] = "theme";
     j["dark"] = isDark;
     std::string jsonStr = j.dump();
-    std::wstring wjson(jsonStr.begin(), jsonStr.end());
+    std::wstring wjson = Utf8ToWide(jsonStr);
     m_webview->PostWebMessageAsJson(wjson.c_str());
 }
 
@@ -364,7 +416,7 @@ void PreviewPanel::scrollToLine(int line) {
     j["type"] = "scroll";
     j["line"] = line;
     std::string jsonStr = j.dump();
-    std::wstring wjson(jsonStr.begin(), jsonStr.end());
+    std::wstring wjson = Utf8ToWide(jsonStr);
     m_webview->PostWebMessageAsJson(wjson.c_str());
 }
 
@@ -414,7 +466,7 @@ void PreviewPanel::triggerExport() {
     nlohmann::json j;
     j["type"] = "export";
     std::string jsonStr = j.dump();
-    std::wstring wjson(jsonStr.begin(), jsonStr.end());
+    std::wstring wjson = Utf8ToWide(jsonStr);
     m_webview->PostWebMessageAsJson(wjson.c_str());
 }
 
