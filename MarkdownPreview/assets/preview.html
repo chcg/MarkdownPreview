@@ -186,6 +186,24 @@
     }
 
     // =========================================================================
+    // Image path rewrite (D-08, REND-05) — Plan 02-03
+    // Rewrites relative image paths to use file.mdpreview virtual host.
+    // Handles: ./img.png, subdir/img.png, ../img.png
+    // Leaves unchanged: http://, https://, //, and data: URIs
+    // T-02-11 mitigation: only rewrites markdown image syntax; DENY_CORS on virtual host
+    // =========================================================================
+    function rewriteImagePaths(markdownText) {
+        return markdownText.replace(
+            /!\[([^\]]*)\]\((?!https?:\/\/|\/\/|data:)(\.?\.?\/?)([^)]+)\)/g,
+            function(match, alt, prefix, rest) {
+                // Normalize: strip leading ./ if present
+                var normalized = (prefix + rest).replace(/^\.\//, '');
+                return '![' + alt + '](https://file.mdpreview/' + normalized + ')';
+            }
+        );
+    }
+
+    // =========================================================================
     // Render pipeline (REND-02, REND-03, REND-04, REND-06)
     // =========================================================================
     function renderMarkdown(markdown, filePath, customCss) {
@@ -195,7 +213,8 @@
 
         try {
             var stripped = stripFrontmatter(markdown);
-            var html = md.render(stripped);
+            var rewritten = rewriteImagePaths(stripped);  // rewrite relative image paths (D-08, REND-05)
+            var html = md.render(rewritten);
             preview.innerHTML = html;
             errorEl.style.display = 'none';
 

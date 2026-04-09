@@ -110,6 +110,9 @@ void onBufferActivated(UINT_PTR bufferId) {
         if (!g_previewPanel.isVisible()) {
             g_previewPanel.toggle(funcItems[0]._cmdID);
         }
+        // Update image virtual host BEFORE sending render message (Pitfall 3: timing)
+        // Maps file.mdpreview to the new file's parent directory before images are requested
+        g_previewPanel.updateFileVirtualHost(filePath);
         g_previewPanel.renderMarkdown(filePath);
     } else {
         // Non-.md file: navigate preview back to idle welcome page
