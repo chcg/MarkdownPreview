@@ -54,6 +54,43 @@
             padding: var(--space-xl);  /* 32px all sides per UI-SPEC */
         }
 
+        /* Idle/welcome state — shown on load and when a non-.md file is active */
+        #idle-state {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            text-align: center;
+            font-family: "Segoe UI", system-ui, sans-serif;
+        }
+        #idle-state .content {
+            padding: var(--space-2xl) var(--space-xl) var(--space-xl) var(--space-xl);
+        }
+        #idle-state h1 {
+            font-size: 28px;
+            font-weight: 600;
+            line-height: 1.2;
+            color: #1F2328;
+            margin: 0;
+        }
+        body[data-theme="dark"] #idle-state h1 {
+            color: #E6EDF3;
+        }
+        #idle-state .version {
+            font-size: 14px;
+            font-weight: 400;
+            line-height: 1.5;
+            color: #656D76;
+            margin-top: var(--space-sm);
+        }
+        #idle-state .hint {
+            font-size: 16px;
+            font-weight: 400;
+            line-height: 1.5;
+            color: #656D76;
+            margin-top: var(--space-lg);
+        }
+
         /* Error state — shown when rendering fails */
         #error-state {
             display: none;
@@ -92,8 +129,17 @@
     <script src="https://appassets.mdpreview/highlight.min.js"></script>
 </head>
 <body>
-    <!-- Primary preview area -->
-    <div id="preview" class="markdown-body"></div>
+    <!-- Idle/welcome state — visible on load; hidden once first render arrives -->
+    <div id="idle-state">
+        <div class="content">
+            <h1>MarkdownPreview</h1>
+            <div class="version">v0.1.0</div>
+            <div class="hint">Open a .md file to see the preview</div>
+        </div>
+    </div>
+
+    <!-- Primary preview area (hidden until first render) -->
+    <div id="preview" class="markdown-body" style="display:none"></div>
 
     <!-- Error state (shown on render failure) -->
     <div id="error-state">
@@ -214,6 +260,19 @@
     }
 
     // =========================================================================
+    // Idle state helpers — show/hide the welcome screen
+    // =========================================================================
+    function showIdle() {
+        document.getElementById('idle-state').style.display = 'flex';
+        document.getElementById('preview').style.display    = 'none';
+        document.getElementById('error-state').style.display = 'none';
+    }
+
+    function hideIdle() {
+        document.getElementById('idle-state').style.display = 'none';
+    }
+
+    // =========================================================================
     // Render pipeline (REND-02, REND-03, REND-04, REND-06)
     // =========================================================================
     function renderMarkdown(markdown, filePath, customCss) {
@@ -225,6 +284,8 @@
             var stripped = stripFrontmatter(markdown);
             var rewritten = rewriteImagePaths(stripped);  // rewrite relative image paths (D-08, REND-05)
             var html = md.render(rewritten);
+            hideIdle();
+            preview.style.display = 'block';
             preview.innerHTML = html;
             errorEl.style.display = 'none';
 
@@ -238,6 +299,8 @@
             }
         } catch (err) {
             // Show error state per UI-SPEC Copywriting Contract
+            hideIdle();
+            preview.style.display = 'none';
             preview.innerHTML = '';
             errorEl.style.display = 'block';
             errorDetail.textContent = err && err.message ? err.message : String(err);
@@ -369,6 +432,9 @@
                     msg.filePath  || '',
                     msg.customCss || null
                 );
+                break;
+            case 'idle':
+                showIdle();
                 break;
             case 'theme':
                 setTheme(!!msg.dark);

@@ -66,6 +66,7 @@ private:
     bool m_renderPending = false;
     bool m_isDark = false;
     std::wstring m_currentFilePath;
+    std::wstring m_pendingFilePath;  // stores filePath when renderMarkdown() is called before WebView2 is ready
     std::wstring m_exportFilePath;  // set before sending export trigger; used in exportReady handler
     EventRegistrationToken m_webMessageReceivedToken = {};
 };

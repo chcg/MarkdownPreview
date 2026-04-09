@@ -232,9 +232,21 @@ void PreviewPanel::initWebView2() {
                                     COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_DENY_CORS);
                             }
 
-                            // Navigate to welcome page (per D-11)
-                            m_webview->Navigate(L"https://appassets.mdpreview/welcome.html");
+                            // Navigate to preview.html — the single rendering page that handles
+                            // all message types including render, theme, scroll, export, and idle.
+                            // welcome.html has no WebView2 message listener, so any PostWebMessageAsJson
+                            // call while welcome.html is loaded would be silently discarded (BUG FIX).
+                            m_webview->Navigate(L"https://appassets.mdpreview/preview.html");
                             m_webview2Initialized = true;
+
+                            // Fire any render that arrived before WebView2 finished initializing.
+                            // NPPN_BUFFERACTIVATED can fire before the async controller callback
+                            // completes; without this, the first render is permanently lost.
+                            if (!m_pendingFilePath.empty()) {
+                                std::wstring pending = m_pendingFilePath;
+                                m_pendingFilePath.clear();
+                                renderMarkdown(pending);
+                            }
 
                             // Wire JS->C++ message channel (used by export in Plan 02-04)
                             // T-02-04 mitigation: handler wraps parse in try/catch; no shell/exec
@@ -335,7 +347,13 @@ std::wstring PreviewPanel::getCurrentText() {
 
 // Phase 2: Retrieve Scintilla text, encode as JSON, post to WebView2
 void PreviewPanel::renderMarkdown(const std::wstring& filePath) {
-    if (!m_webview || !m_webview2Initialized) return;
+    if (!m_webview || !m_webview2Initialized) {
+        // WebView2 is still initializing (async). Store the path so the controller
+        // completion callback can fire the render once initialization is done.
+        m_pendingFilePath = filePath;
+        return;
+    }
+    m_pendingFilePath.clear();  // cancel any stored pending — this call supersedes it
     m_currentFilePath = filePath;
 
     std::wstring wtext = getCurrentText();
@@ -402,11 +420,17 @@ void PreviewPanel::setTheme(bool isDark) {
     m_webview->PostWebMessageAsJson(wjson.c_str());
 }
 
-// Phase 2: Navigate back to welcome.html when a non-.md file is activated
+// Phase 2: Show idle/welcome state when a non-.md file is activated.
+// Posts {type:"idle"} to preview.html instead of re-navigating to welcome.html.
+// Re-navigating to welcome.html would unload the message listener in preview.html,
+// causing any subsequent renderMarkdown() call to be silently dropped (BUG FIX).
 void PreviewPanel::showIdle() {
-    if (m_webview && m_webview2Initialized) {
-        m_webview->Navigate(L"https://appassets.mdpreview/welcome.html");
-    }
+    if (!m_webview || !m_webview2Initialized) return;
+    nlohmann::json j;
+    j["type"] = "idle";
+    std::string jsonStr = j.dump();
+    std::wstring wjson = Utf8ToWide(jsonStr);
+    m_webview->PostWebMessageAsJson(wjson.c_str());
 }
 
 // Phase 2 Plan 03: Post scroll message to JS — {type:"scroll", line:N}
