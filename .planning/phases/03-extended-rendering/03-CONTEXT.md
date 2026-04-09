@@ -29,6 +29,8 @@ Add advanced rendering features to the existing preview pipeline: KaTeX math (in
 - **D-07:** Paper size: US Letter, portrait orientation, fixed. No user configuration for paper size/orientation.
 - **D-08:** Footer: filename (basename of source file) + "Page N of M". Header: empty. Satisfies EXPT-03.
 
+  **Accepted compromise (API limitation):** `ICoreWebView2PrintSettings` has no custom footer string property — `FooterUri` shows only the page URI (e.g. `https://appassets.mdpreview/preview.html`), not a user-specified string. There is no API to place an arbitrary filename string in the footer. As a result, the implementation places the basename of the source `.md` file in `HeaderTitle` (header area) instead of the footer. The footer shows the default URI + "Page N of M". This is the accepted compromise per API limitation (see RESEARCH.md Open Questions #1 / RESOLVED). The requirement EXPT-03 ("page numbers, headers, and footers") is still satisfied: page numbers are present, header contains filename, footer is present.
+
 ### Claude's Discretion
 - KaTeX error rendering for malformed math (standard KaTeX error display is acceptable)
 - Mermaid initialization strategy (async init, lazy vs. eager)
@@ -56,7 +58,7 @@ Add advanced rendering features to the existing preview pipeline: KaTeX math (in
 - `MarkdownPreview/src/PluginDefinition.h` / `PluginDefinition.cpp` — Menu item registration. Add "Export to PDF" menu item here.
 
 ### Tech stack decisions (CLAUDE.md)
-- KaTeX 0.16.45 via `@vscode/markdown-it-katex` 1.1.2 (Microsoft-maintained fork — use this, not the abandoned original)
+- KaTeX 0.16.45 via `markdown-it-texmath` 1.0.0 (browser-ready UMD wrapper; replaces @vscode/markdown-it-katex which has no browser build — see RESEARCH.md Critical Finding)
 - Mermaid 11.14.0 (runtime diagram rendering)
 - markdown-it-footnote 4.0.0 (official plugin)
 - WebView2 `ICoreWebView2_7::PrintToPdf` / `PrintToPdfAsync` for PDF export (no third-party dependency)
@@ -70,7 +72,7 @@ Add advanced rendering features to the existing preview pipeline: KaTeX math (in
 - `window.chrome.webview.addEventListener('message', handler)` in preview.html: The existing message dispatch switch handles `render`, `theme`, `scroll`, `export`. Add `zoom` case and the PDF export trigger here.
 - `exportHtml()` async function: Pattern for JS → C++ file write via `postMessage({type:'exportReady', html:...})`. PDF export follows the same postMessage → C++ `PrintToPdf` chain.
 - `setTheme(isDark)` and `hljs.highlightAll()` calls in `renderMarkdown()`: Mermaid and KaTeX initialization must hook in after the render call and respect the current theme state.
-- Assets directory (`MarkdownPreview/assets/`): All JS/CSS bundles live here and are served via `appassets.mdpreview` virtual host. Add KaTeX (katex.min.js + katex.min.css), @vscode/markdown-it-katex, mermaid.min.js, and markdown-it-footnote here.
+- Assets directory (`MarkdownPreview/assets/`): All JS/CSS bundles live here and are served via `appassets.mdpreview` virtual host. Add KaTeX (katex.min.js + katex.min.css), markdown-it-texmath (texmath.js), mermaid.min.js, and markdown-it-footnote here.
 
 ### Established Patterns
 - Post-render hooks: `hljs.highlightAll()` is called after `preview.innerHTML = html`. KaTeX rendering (via markdown-it integration) happens in the markdown-it pipeline; Mermaid needs a post-render call to process `<pre class="mermaid">` or `<div class="mermaid">` blocks.

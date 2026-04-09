@@ -52,7 +52,7 @@ A Notepad++ plugin that provides a live, full-featured markdown preview in a doc
 | Technology | Version | Purpose | Why |
 |------------|---------|---------|-----|
 | KaTeX | 0.16.45 | TeX math rendering | Fastest math renderer for the web. Synchronous rendering (no reflow). Actively maintained (updated April 2026). MathJax is 10x slower and overkill for preview use. |
-| @vscode/markdown-it-katex | 1.1.2 | markdown-it integration for KaTeX | **Use the VS Code fork, not the abandoned original.** The original `markdown-it-katex` (2.0.3) hasn't been updated in 9 years. The `@vscode/markdown-it-katex` is maintained by Microsoft and published 7 months ago. Handles `$...$` inline and `$$...$$` block math delimiters. |
+| markdown-it-texmath | 1.0.0 | markdown-it integration for KaTeX (browser-ready UMD) | **Use markdown-it-texmath, not @vscode/markdown-it-katex.** The VS Code fork (@vscode/markdown-it-katex 1.1.2) has no browser UMD build — it ships only a CommonJS `dist/index.js` compiled from TypeScript and cannot be loaded via `<script src>` in WebView2. markdown-it-texmath ships a browser-ready `texmath.js`, accepts KaTeX as a passed-in engine (`{ engine: window.katex }`), and handles `$...$` inline and `$$...$$` block delimiters. [VERIFIED: github.com/microsoft/vscode-markdown-it-katex package.json — no bundler, TypeScript only] |
 ### Mermaid Diagram Rendering
 | Technology | Version | Purpose | Why |
 |------------|---------|---------|-----|
@@ -109,7 +109,7 @@ A Notepad++ plugin that provides a live, full-featured markdown preview in a doc
 - [KaTeX on npm](https://www.npmjs.com/package/katex) -- v0.16.45
 - [highlight.js on npm](https://www.npmjs.com/package/highlight.js) -- v11.11.1
 - [Mermaid releases](https://github.com/mermaid-js/mermaid/releases) -- v11.14.0
-- [@vscode/markdown-it-katex](https://www.npmjs.com/package/@vscode/markdown-it-katex) -- v1.1.2, Microsoft-maintained
+- [markdown-it-texmath](https://www.npmjs.com/package/markdown-it-texmath) -- v1.0.0, browser-ready UMD (replaces @vscode/markdown-it-katex which has no browser build)
 - [NppAnotherMarkdown](https://github.com/ezyuzin/NppAnotherMarkdown) -- Reference implementation using markdown-it + WebView2
 - [NppMarkdownPanel](https://github.com/mohzy83/NppMarkdownPanel) -- Reference implementation using Markdig + WebView2
 - [Notepad++ Plugin Communication](https://npp-user-manual.org/docs/plugin-communication/) -- Plugin API and Scintilla notifications

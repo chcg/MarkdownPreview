@@ -588,7 +588,7 @@ m_environment = env;  // Add: wil::com_ptr<ICoreWebView2Environment> m_environme
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Custom footer text limitation (D-08)**
    - What we know: `ICoreWebView2PrintSettings` exposes `HeaderTitle` (a string) and `FooterUri` (a URI string). `ShouldPrintHeaderAndFooter=TRUE` enables a default footer of `[URI] [page N of M]`. There is no property for a fully custom footer string.
