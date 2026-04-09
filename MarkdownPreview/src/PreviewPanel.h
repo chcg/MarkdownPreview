@@ -76,6 +76,7 @@ private:
     // Phase 3: zoom controls (THME-04, D-04, D-05)
     float m_zoomLevel = 1.0f;
     EventRegistrationToken m_accelKeyToken = {};
+    EventRegistrationToken m_navigationCompletedToken = {};  // WR-03: initial zoom posted after nav completes
     std::wstring m_configPath;  // stored for settings save in AcceleratorKeyPressed handler
 
     // Phase 3: environment pointer — required for PDF export (Plan 04)

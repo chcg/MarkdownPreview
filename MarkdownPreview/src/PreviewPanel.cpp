@@ -65,6 +65,10 @@ void PreviewPanel::destroy() {
         m_controller->remove_AcceleratorKeyPressed(m_accelKeyToken);
         m_accelKeyToken = {};
     }
+    if (m_webview && m_navigationCompletedToken.value != 0) {
+        m_webview->remove_NavigationCompleted(m_navigationCompletedToken);
+        m_navigationCompletedToken = {};
+    }
     if (m_controller) {
         m_controller->Close();
         m_controller = nullptr;
@@ -310,18 +314,27 @@ void PreviewPanel::initWebView2() {
                             m_webview->Navigate(L"https://appassets.mdpreview/preview.html");
                             m_webview2Initialized = true;
 
-                            // Fire any render that arrived before WebView2 finished initializing.
-                            // NPPN_BUFFERACTIVATED can fire before the async controller callback
-                            // completes; without this, the first render is permanently lost.
-                            if (!m_pendingFilePath.empty()) {
-                                std::wstring pending = m_pendingFilePath;
-                                m_pendingFilePath.clear();
-                                renderMarkdown(pending);
-                            }
-
-                            // Apply persisted zoom level (D-05) — use g_settings.zoomLevel which was loaded in onNppReady()
+                            // Apply persisted zoom level (D-05)
                             m_zoomLevel = g_settings.zoomLevel;
-                            applyInitialZoom(m_zoomLevel);
+
+                            // WR-03: Wire NavigationCompleted so that applyInitialZoom and any
+                            // pending render are posted only after preview.html has fully loaded
+                            // and its message listener is registered. Navigate() is async — posting
+                            // zoom or render messages immediately after Navigate() risks them being
+                            // silently dropped if the JS listener has not yet registered.
+                            m_webview->add_NavigationCompleted(
+                                Callback<ICoreWebView2NavigationCompletedEventHandler>(
+                                    [this](ICoreWebView2* /*sender*/,
+                                           ICoreWebView2NavigationCompletedEventArgs* /*args*/) -> HRESULT {
+                                        applyInitialZoom(m_zoomLevel);
+                                        if (!m_pendingFilePath.empty()) {
+                                            std::wstring pending = m_pendingFilePath;
+                                            m_pendingFilePath.clear();
+                                            renderMarkdown(pending);
+                                        }
+                                        return S_OK;
+                                    }).Get(),
+                                &m_navigationCompletedToken);
 
                             // Wire JS->C++ message channel (used by export in Plan 02-04)
                             // T-02-04 mitigation: handler wraps parse in try/catch; no shell/exec
