@@ -22,6 +22,10 @@ static ShortcutKey toggleShortcut = { true, false, true, 'M' };
 // Verified no conflict: Ctrl+Shift+E is not a default Notepad++ shortcut
 static ShortcutKey exportShortcut = { true, false, true, 'E' };
 
+// Shortcut key: Ctrl+Shift+P for Export as PDF (Phase 3)
+// Ctrl+Shift+P is not a default Notepad++ shortcut (A6: assumed free — verify during testing)
+static ShortcutKey pdfExportShortcut = { true, false, true, 'P' };
+
 void pluginInit(HANDLE hModule) {
     g_hInstance = reinterpret_cast<HINSTANCE>(hModule);
     // Per Pitfall 2: CoInitializeEx required before WebView2, safe to call early
@@ -52,6 +56,13 @@ void commandMenuInit() {
     funcItems[1]._cmdID = 0;
     funcItems[1]._init2Check = false;
     funcItems[1]._pShKey = &exportShortcut;
+
+    // Menu item 2: Export as PDF (Ctrl+Shift+P) per EXPT-02
+    wcscpy_s(funcItems[2]._itemName, menuItemSize, L"Export as PDF");
+    funcItems[2]._pFunc = exportMarkdownAsPdf;
+    funcItems[2]._cmdID = 0;
+    funcItems[2]._init2Check = false;
+    funcItems[2]._pShKey = &pdfExportShortcut;
 }
 
 void commandMenuCleanUp() {
@@ -169,6 +180,21 @@ void exportMarkdown() {
         (_wcsicmp(filePath.c_str() + filePath.size() - 3, L".md") == 0);
     if (!isMd) return;
     g_previewPanel.triggerExport();
+}
+
+// Phase 3: Trigger PDF export — check active .md file, call triggerPdfExport()
+// Mirrors exportMarkdown() pattern exactly (EXPT-02)
+void exportMarkdownAsPdf() {
+    // Only trigger if panel is visible and a .md file is active
+    if (!g_previewPanel.isVisible()) return;
+    wchar_t path[MAX_PATH] = {};
+    ::SendMessage(nppData._nppHandle, NPPM_GETFULLCURRENTPATH, MAX_PATH,
+        reinterpret_cast<LPARAM>(path));
+    std::wstring filePath(path);
+    bool isMd = filePath.size() >= 3 &&
+        (_wcsicmp(filePath.c_str() + filePath.size() - 3, L".md") == 0);
+    if (!isMd) return;
+    g_previewPanel.triggerPdfExport();
 }
 
 // Phase 2 Plan 03: Called on SCN_UPDATEUI — scroll sync (SCRL-01)

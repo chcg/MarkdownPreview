@@ -598,6 +598,104 @@ void PreviewPanel::saveExportedHtml(const std::string& htmlUtf8) {
     m_exportFilePath.clear();  // reset after write
 }
 
+// Phase 3: Trigger PDF export via WebView2 ICoreWebView2_7::PrintToPdf (EXPT-02, EXPT-03)
+// D-06: Output path = source .md path with .pdf extension. Auto-save, no dialog, overwrite if exists.
+// D-07: US Letter portrait, fixed — no user config.
+// D-08: HeaderTitle = basename of .md file; ShouldPrintHeaderAndFooter=TRUE enables "Page N of M" footer.
+//       Footer shows default URI + page number (ICoreWebView2PrintSettings API limitation — no custom
+//       footer string; accepted compromise per CONTEXT.md D-08 and RESEARCH.md Open Questions RESOLVED).
+// ZOOM RESET: CSS zoom scales PDF output. Save current zoom, reset to 1.0 before PrintToPdf,
+//             restore after completion callback fires. Uses existing postZoomToJs() from Plan 03.
+// CRITICAL: m_environment must be set (done in initWebView2() environment callback by Plan 03).
+void PreviewPanel::triggerPdfExport() {
+    if (!m_webview || !m_webview2Initialized || m_currentFilePath.empty()) return;
+    if (m_printToPdfInProgress) return;  // guard: ICoreWebView2_7::PrintToPdf — only one at a time
+
+    // D-06: Derive PDF output path — replace .md extension with .pdf
+    std::wstring pdfPath = m_currentFilePath;
+    size_t dotPos = pdfPath.rfind(L'.');
+    if (dotPos != std::wstring::npos) {
+        pdfPath = pdfPath.substr(0, dotPos) + L".pdf";
+    } else {
+        pdfPath += L".pdf";
+    }
+
+    // D-08: Extract basename of .md file for HeaderTitle
+    std::wstring basename = m_currentFilePath;
+    size_t slashPos = basename.find_last_of(L"\\/");
+    if (slashPos != std::wstring::npos) {
+        basename = basename.substr(slashPos + 1);
+    }
+
+    // Get ICoreWebView2Environment6 from stored m_environment (set in initWebView2 env callback)
+    if (!m_environment) return;
+    wil::com_ptr<ICoreWebView2Environment6> env6;
+    m_environment->QueryInterface(IID_PPV_ARGS(&env6));
+    if (!env6) return;  // Pitfall 5: env6 null if m_environment was not stored
+
+    // Create print settings
+    wil::com_ptr<ICoreWebView2PrintSettings> printSettings;
+    HRESULT hr = env6->CreatePrintSettings(&printSettings);
+    if (FAILED(hr) || !printSettings) return;
+
+    // D-07: US Letter portrait (8.5 x 11 inches). Portrait is the default orientation.
+    printSettings->put_Orientation(COREWEBVIEW2_PRINT_ORIENTATION_PORTRAIT);
+
+    // EXPT-03: Enable page numbers + header/footer
+    printSettings->put_ShouldPrintHeaderAndFooter(TRUE);
+
+    // D-08: Header = basename of .md file (e.g., "README.md")
+    //       Footer = default URI + "Page N of M" (ICoreWebView2PrintSettings limitation)
+    printSettings->put_HeaderTitle(basename.c_str());
+
+    // Include background colors (code blocks, Mermaid diagrams render with backgrounds)
+    printSettings->put_ShouldPrintBackgrounds(TRUE);
+
+    // Margins: Claude's discretion per D-08 context
+    printSettings->put_MarginTop(0.5);
+    printSettings->put_MarginBottom(0.5);
+    printSettings->put_MarginLeft(0.75);
+    printSettings->put_MarginRight(0.75);
+
+    // Get ICoreWebView2_7 from m_webview for PrintToPdf method
+    wil::com_ptr<ICoreWebView2_7> webview7;
+    m_webview->QueryInterface(IID_PPV_ARGS(&webview7));
+    if (!webview7) return;
+
+    // ZOOM RESET: Save current zoom level and reset to 1.0 before PrintToPdf.
+    // CSS zoom (document.body.style.zoom) scales the PDF output — a user at 400% zoom would
+    // produce an incorrectly scaled PDF. PostWebMessageAsJson is synchronous on the C++ side;
+    // the renderer processes the zoom message before the PrintToPdf capture begins because
+    // PrintToPdf is issued as a new task to the renderer after the current message queue drains.
+    // After the PDF completion callback fires, restore the saved zoom level.
+    m_savedZoomForPdf = m_zoomLevel;
+    postZoomToJs(1.0f);  // reset to 100% zoom for accurate PDF capture
+
+    m_printToPdfInProgress = true;
+    hr = webview7->PrintToPdf(
+        pdfPath.c_str(),
+        printSettings.get(),
+        Callback<ICoreWebView2PrintToPdfCompletedHandler>(
+            [this](HRESULT errorCode, BOOL isSuccessful) -> HRESULT {
+                m_printToPdfInProgress = false;
+
+                // ZOOM RESTORE: Restore the zoom level that was active before PDF export.
+                // This runs on the UI thread (WebView2 completion callbacks are marshalled
+                // back to the thread that called PrintToPdf).
+                postZoomToJs(m_savedZoomForPdf);
+
+                // D-06: Silent completion — no dialog, no notification on success or failure
+                UNREFERENCED_PARAMETER(errorCode);
+                UNREFERENCED_PARAMETER(isSuccessful);
+                return S_OK;
+            }).Get());
+
+    if (FAILED(hr)) {
+        m_printToPdfInProgress = false;  // reset on immediate failure
+        postZoomToJs(m_savedZoomForPdf); // restore zoom even on immediate failure
+    }
+}
+
 // Phase 2: Dispatch JS->C++ messages (T-02-04 mitigation: parse with try/catch, no shell/exec)
 void PreviewPanel::handleJsMessage(const std::wstring& message) {
     // Convert wstring to UTF-8 for nlohmann parsing

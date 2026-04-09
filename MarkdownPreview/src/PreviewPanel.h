@@ -28,6 +28,7 @@ public:
     void triggerExport();                                 // post {type:"export"} to JS; sets m_exportFilePath
     void setConfigPath(const std::wstring& path) { m_configPath = path; }  // called from onNppReady()
     void applyInitialZoom(float level);  // post zoom message after WebView2 nav completes
+    void triggerPdfExport();  // Phase 3: PDF export via WebView2 PrintToPdf (EXPT-02, EXPT-03)
 
 private:
     void createHostWindow();
@@ -79,6 +80,9 @@ private:
 
     // Phase 3: environment pointer — required for PDF export (Plan 04)
     wil::com_ptr<ICoreWebView2Environment> m_environment;
+
+    bool m_printToPdfInProgress = false;  // guard: only one PrintToPdf in flight at a time
+    float m_savedZoomForPdf = 1.0f;       // zoom level saved before PDF export, restored after
 
     void postZoomToJs(float level);  // post {type:"zoom", level:N} to WebView2
 };
