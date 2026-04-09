@@ -431,12 +431,19 @@ std::wstring PreviewPanel::getCurrentText() {
         reinterpret_cast<LPARAM>(utf8Text.data()));
     utf8Text.resize(static_cast<size_t>(len));
 
-    // Convert UTF-8 to wstring (CP_UTF8 — never use CP_ACP for editor content)
+    // Determine the document's code page (SCI_GETCODEPAGE returns 65001 for UTF-8,
+    // 0 for ANSI/default, or another value for other encodings).
+    // Using the wrong code page (e.g. CP_UTF8 on an ANSI file) produces garbled wstrings
+    // and invalid UTF-8 after the round-trip, which causes nlohmann::dump() to throw.
+    LRESULT sciCp = ::SendMessage(hSci, SCI_GETCODEPAGE, 0, 0);
+    UINT codePage = (sciCp == 65001) ? CP_UTF8 : CP_ACP;
+
     if (utf8Text.empty()) return L"";
-    int wlen = ::MultiByteToWideChar(CP_UTF8, 0, utf8Text.c_str(),
+    int wlen = ::MultiByteToWideChar(codePage, 0, utf8Text.c_str(),
         static_cast<int>(utf8Text.size()), nullptr, 0);
+    if (wlen <= 0) return L"";
     std::wstring wtext(static_cast<size_t>(wlen), L'\0');
-    ::MultiByteToWideChar(CP_UTF8, 0, utf8Text.c_str(),
+    ::MultiByteToWideChar(codePage, 0, utf8Text.c_str(),
         static_cast<int>(utf8Text.size()), &wtext[0], wlen);
     return wtext;
 }
@@ -493,7 +500,7 @@ void PreviewPanel::renderMarkdown(const std::wstring& filePath) {
         }
     }
 
-    std::string jsonStr = j.dump();
+    std::string jsonStr = j.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace);
     std::wstring wjson = Utf8ToWide(jsonStr);
     m_webview->PostWebMessageAsJson(wjson.c_str());
 }
@@ -505,7 +512,7 @@ void PreviewPanel::setTheme(bool isDark) {
     nlohmann::json j;
     j["type"] = "theme";
     j["dark"] = isDark;
-    std::string jsonStr = j.dump();
+    std::string jsonStr = j.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace);
     std::wstring wjson = Utf8ToWide(jsonStr);
     m_webview->PostWebMessageAsJson(wjson.c_str());
 }
@@ -518,7 +525,7 @@ void PreviewPanel::showIdle() {
     if (!m_webview || !m_webview2Initialized) return;
     nlohmann::json j;
     j["type"] = "idle";
-    std::string jsonStr = j.dump();
+    std::string jsonStr = j.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace);
     std::wstring wjson = Utf8ToWide(jsonStr);
     m_webview->PostWebMessageAsJson(wjson.c_str());
 }
@@ -536,7 +543,7 @@ void PreviewPanel::postZoomToJs(float level) {
     nlohmann::json j;
     j["type"] = "zoom";
     j["level"] = level;
-    std::string jsonStr = j.dump();
+    std::string jsonStr = j.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace);
     std::wstring wjson = Utf8ToWide(jsonStr);
     m_webview->PostWebMessageAsJson(wjson.c_str());
 }
@@ -547,7 +554,7 @@ void PreviewPanel::scrollToLine(int line) {
     nlohmann::json j;
     j["type"] = "scroll";
     j["line"] = line;
-    std::string jsonStr = j.dump();
+    std::string jsonStr = j.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace);
     std::wstring wjson = Utf8ToWide(jsonStr);
     m_webview->PostWebMessageAsJson(wjson.c_str());
 }
@@ -597,7 +604,7 @@ void PreviewPanel::triggerExport() {
     // Send export trigger to JS
     nlohmann::json j;
     j["type"] = "export";
-    std::string jsonStr = j.dump();
+    std::string jsonStr = j.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace);
     std::wstring wjson = Utf8ToWide(jsonStr);
     m_webview->PostWebMessageAsJson(wjson.c_str());
 }
@@ -759,7 +766,9 @@ LRESULT CALLBACK PreviewPanel::wndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARA
             ::KillTimer(hWnd, PreviewPanel::DEBOUNCE_TIMER_ID);
             PreviewPanel* self = reinterpret_cast<PreviewPanel*>(
                 ::GetWindowLongPtr(hWnd, GWLP_USERDATA));
-            if (self && self->m_renderPending) self->doRender();
+            try {
+                if (self && self->m_renderPending) self->doRender();
+            } catch (...) {}
             return 0;
         }
         break;
