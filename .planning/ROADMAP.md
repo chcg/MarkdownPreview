@@ -49,10 +49,10 @@ Plans:
 **UI hint**: yes
 
 Plans:
-- [ ] 02-01-PLAN.md — C++ notification handlers (auto-open, debounce render, theme detection) + header constants
-- [ ] 02-02-PLAN.md — preview.html JS pipeline (markdown-it, highlight.js, YAML strip, theme swap, custom CSS) + asset downloads
-- [ ] 02-03-PLAN.md — Scroll sync (SCN_UPDATEUI → scrollToLine) + local image resolution (file.mdpreview virtual host)
-- [ ] 02-04-PLAN.md — HTML export end-to-end (JS DOM serialization + C++ file write + Export menu item)
+- [x] 02-01-PLAN.md — C++ notification handlers (auto-open, debounce render, theme detection) + header constants
+- [x] 02-02-PLAN.md — preview.html JS pipeline (markdown-it, highlight.js, YAML strip, theme swap, custom CSS) + asset downloads
+- [x] 02-03-PLAN.md — Scroll sync (SCN_UPDATEUI → scrollToLine) + local image resolution (file.mdpreview virtual host)
+- [x] 02-04-PLAN.md — HTML export end-to-end (JS DOM serialization + C++ file write + Export menu item)
 
 ### Phase 3: Extended Rendering
 **Goal**: Preview supports math equations, Mermaid diagrams, footnotes, copy-code buttons, zoom controls, and PDF export -- surpassing all existing Notepad++ markdown plugins
