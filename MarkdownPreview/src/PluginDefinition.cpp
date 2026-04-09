@@ -15,8 +15,12 @@ Settings g_settings;
 static HINSTANCE g_hInstance = nullptr;
 static std::wstring g_configPath;
 
-// Shortcut key: Ctrl+Shift+M (D-08)
+// Shortcut key: Ctrl+Shift+M for Toggle Preview (D-08)
 static ShortcutKey toggleShortcut = { true, false, true, 'M' };
+
+// Shortcut key: Ctrl+Shift+E for Export as HTML
+// Verified no conflict: Ctrl+Shift+E is not a default Notepad++ shortcut
+static ShortcutKey exportShortcut = { true, false, true, 'E' };
 
 void pluginInit(HANDLE hModule) {
     g_hInstance = reinterpret_cast<HINSTANCE>(hModule);
@@ -41,6 +45,13 @@ void commandMenuInit() {
     funcItems[0]._cmdID = 0;
     funcItems[0]._init2Check = false;
     funcItems[0]._pShKey = &toggleShortcut;
+
+    // Menu item 1: Export as HTML (Ctrl+Shift+E) per EXPT-01
+    wcscpy_s(funcItems[1]._itemName, menuItemSize, L"Export as HTML");
+    funcItems[1]._pFunc = exportMarkdown;
+    funcItems[1]._cmdID = 0;
+    funcItems[1]._init2Check = false;
+    funcItems[1]._pShKey = &exportShortcut;
 }
 
 void commandMenuCleanUp() {
@@ -141,6 +152,20 @@ void onScnModified(SCNotification* notification) {
     if (isMd) {
         g_previewPanel.scheduleRender();
     }
+}
+
+// Phase 2 Plan 04: Trigger HTML export — check active .md file, call triggerExport()
+void exportMarkdown() {
+    // Only trigger export if panel is visible and a .md file is active
+    if (!g_previewPanel.isVisible()) return;
+    wchar_t path[MAX_PATH] = {};
+    ::SendMessage(nppData._nppHandle, NPPM_GETFULLCURRENTPATH, MAX_PATH,
+        reinterpret_cast<LPARAM>(path));
+    std::wstring filePath(path);
+    bool isMd = filePath.size() >= 3 &&
+        (_wcsicmp(filePath.c_str() + filePath.size() - 3, L".md") == 0);
+    if (!isMd) return;
+    g_previewPanel.triggerExport();
 }
 
 // Phase 2 Plan 03: Called on SCN_UPDATEUI — scroll sync (SCRL-01)

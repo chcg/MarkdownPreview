@@ -13,6 +13,7 @@
 #include <wrl.h>
 #include <WebView2EnvironmentOptions.h>
 #include <nlohmann/json.hpp>
+#include <fstream>
 
 #pragma comment(lib, "comctl32.lib")
 #pragma comment(lib, "shlwapi.lib")
@@ -395,6 +396,46 @@ void PreviewPanel::updateFileVirtualHost(const std::wstring& filePath) {
         COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_DENY_CORS);
 }
 
+// Phase 2 Plan 04: Trigger HTML export — sets m_exportFilePath, posts {type:"export"} to JS
+void PreviewPanel::triggerExport() {
+    if (!m_webview || !m_webview2Initialized || m_currentFilePath.empty()) return;
+
+    // Derive target path: replace .md extension with .html (D-10)
+    std::wstring exportPath = m_currentFilePath;
+    size_t dotPos = exportPath.rfind(L'.');
+    if (dotPos != std::wstring::npos) {
+        exportPath = exportPath.substr(0, dotPos) + L".html";
+    } else {
+        exportPath += L".html";
+    }
+    m_exportFilePath = exportPath;
+
+    // Send export trigger to JS
+    nlohmann::json j;
+    j["type"] = "export";
+    std::string jsonStr = j.dump();
+    std::wstring wjson(jsonStr.begin(), jsonStr.end());
+    m_webview->PostWebMessageAsJson(wjson.c_str());
+}
+
+// Phase 2 Plan 04: Write UTF-8 HTML file to disk with BOM (D-10, T-02-15 mitigation)
+// Path is derived from m_currentFilePath (NPPM_GETFULLCURRENTPATH) — no arbitrary path from JS.
+// Silent overwrite per D-10 — no prompt.
+void PreviewPanel::saveExportedHtml(const std::string& htmlUtf8) {
+    if (m_exportFilePath.empty()) return;
+
+    // Write UTF-8 file (with BOM for maximum browser compatibility)
+    std::ofstream f(m_exportFilePath, std::ios::out | std::ios::binary);
+    if (!f.is_open()) return;
+
+    // UTF-8 BOM: 0xEF, 0xBB, 0xBF
+    const unsigned char bom[] = { 0xEF, 0xBB, 0xBF };
+    f.write(reinterpret_cast<const char*>(bom), sizeof(bom));
+    f.write(htmlUtf8.c_str(), static_cast<std::streamsize>(htmlUtf8.size()));
+    f.close();
+    m_exportFilePath.clear();  // reset after write
+}
+
 // Phase 2: Dispatch JS->C++ messages (T-02-04 mitigation: parse with try/catch, no shell/exec)
 void PreviewPanel::handleJsMessage(const std::wstring& message) {
     // Convert wstring to UTF-8 for nlohmann parsing
@@ -408,8 +449,11 @@ void PreviewPanel::handleJsMessage(const std::wstring& message) {
         nlohmann::json j = nlohmann::json::parse(utf8Msg);
         std::string type = j.value("type", "");
         if (type == "exportReady") {
-            // Handled in Plan 02-04 — stub here
-            // Will call: saveExportedHtml(j["html"].get<std::string>())
+            // j["html"] is the full standalone HTML document as a UTF-8 string (D-09)
+            std::string htmlContent = j.value("html", "");
+            if (!htmlContent.empty()) {
+                saveExportedHtml(htmlContent);
+            }
         }
         // Future message types added here (scroll feedback, etc.)
     } catch (...) {

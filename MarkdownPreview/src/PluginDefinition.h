@@ -8,7 +8,7 @@
 #include "PreviewPanel.h"
 #include "Settings.h"
 
-const int NB_FUNC = 1;  // One menu item: Toggle Preview
+const int NB_FUNC = 2;  // Toggle Preview + Export as HTML
 const wchar_t PLUGIN_NAME[] = L"MarkdownPreview";
 
 // External data set by PluginMain.cpp
@@ -35,3 +35,4 @@ void onScnUpdateUi(SCNotification* notification);
 
 // Menu commands
 void togglePreview();
+void exportMarkdown();   // menu command: triggers HTML export via WebView2 JS

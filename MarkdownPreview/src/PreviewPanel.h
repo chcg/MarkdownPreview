@@ -25,6 +25,7 @@ public:
     void setNppHandle(HWND nppHandle) { m_nppHandle = nppHandle; }  // already set in init(); no-op if already set
     void scrollToLine(int line);                          // post {type:"scroll", line:N} to JS
     void updateFileVirtualHost(const std::wstring& filePath);  // map file.mdpreview to file's parent dir
+    void triggerExport();                                 // post {type:"export"} to JS; sets m_exportFilePath
 
 private:
     void createHostWindow();
@@ -43,6 +44,7 @@ private:
     void doRender();                                       // actual render after debounce fires
     std::wstring getCurrentText();                         // retrieves text from active Scintilla view
     void handleJsMessage(const std::wstring& message);    // dispatch JS->C++ messages
+    void saveExportedHtml(const std::string& htmlUtf8);   // write HTML string to disk (UTF-8 BOM)
 
     static const UINT_PTR DEBOUNCE_TIMER_ID = 1;
 
@@ -64,5 +66,6 @@ private:
     bool m_renderPending = false;
     bool m_isDark = false;
     std::wstring m_currentFilePath;
+    std::wstring m_exportFilePath;  // set before sending export trigger; used in exportReady handler
     EventRegistrationToken m_webMessageReceivedToken = {};
 };
