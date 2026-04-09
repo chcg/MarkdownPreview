@@ -41,7 +41,9 @@ static std::wstring Utf8ToWide(const std::string& utf8) {
 //   PreviewPanel.h is included by PluginDefinition.h, so PluginDefinition.h
 //   cannot be included back into PreviewPanel.cpp.
 #include "../include/PluginInterface.h"
+#include "Settings.h"
 extern NppData nppData;
+extern Settings g_settings;
 
 static const wchar_t PANEL_CLASS_NAME[] = L"MarkdownPreviewPanel";
 static const wchar_t PANEL_TITLE[] = L"Markdown Preview";
@@ -58,6 +60,10 @@ void PreviewPanel::destroy() {
     if (m_webview && m_webMessageReceivedToken.value != 0) {
         m_webview->remove_WebMessageReceived(m_webMessageReceivedToken);
         m_webMessageReceivedToken = {};
+    }
+    if (m_controller && m_accelKeyToken.value != 0) {
+        m_controller->remove_AcceleratorKeyPressed(m_accelKeyToken);
+        m_accelKeyToken = {};
     }
     if (m_controller) {
         m_controller->Close();
@@ -203,6 +209,9 @@ void PreviewPanel::initWebView2() {
             [this](HRESULT result, ICoreWebView2Environment* env) -> HRESULT {
                 if (FAILED(result) || !env) return result;
 
+                // Store environment pointer — required for PDF export (Plan 04, PrintToPdf)
+                m_environment = env;
+
                 env->CreateCoreWebView2Controller(m_hPanel,
                     Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>(
                         [this](HRESULT result, ICoreWebView2Controller* controller) -> HRESULT {
@@ -213,6 +222,61 @@ void PreviewPanel::initWebView2() {
 
                             // Resize to fill panel
                             resizeWebView2();
+
+                            // Phase 3: Zoom keyboard interception (THME-04, D-04)
+                            // AcceleratorKeyPressed fires BEFORE key reaches web content.
+                            // Registered on controller (not webview) — Pitfall 4 mitigation.
+                            // put_Handled(TRUE) suppresses WebView2 built-in Ctrl+/-/0 zoom.
+                            m_controller->add_AcceleratorKeyPressed(
+                                Callback<ICoreWebView2AcceleratorKeyPressedEventHandler>(
+                                    [this](ICoreWebView2Controller* /*sender*/,
+                                           ICoreWebView2AcceleratorKeyPressedEventArgs* args) -> HRESULT {
+                                        COREWEBVIEW2_KEY_EVENT_KIND kind;
+                                        args->get_KeyEventKind(&kind);
+                                        if (kind != COREWEBVIEW2_KEY_EVENT_KIND_KEY_DOWN &&
+                                            kind != COREWEBVIEW2_KEY_EVENT_KIND_SYSTEM_KEY_DOWN) {
+                                            return S_OK;
+                                        }
+
+                                        UINT vk = 0;
+                                        args->get_VirtualKey(&vk);
+                                        bool ctrlDown = (::GetKeyState(VK_CONTROL) & 0x8000) != 0;
+                                        if (!ctrlDown) return S_OK;
+
+                                        // VK_OEM_PLUS = 0xBB (= key on US keyboard, used for Ctrl+=)
+                                        // VK_OEM_MINUS = 0xBD (- key)
+                                        // 0x30 = virtual key code for '0' (Ctrl+0 = reset)
+                                        bool isZoomKey = (vk == VK_OEM_PLUS || vk == VK_OEM_MINUS || vk == 0x30);
+                                        if (!isZoomKey) return S_OK;
+
+                                        // Suppress WebView2 built-in zoom behavior
+                                        args->put_Handled(TRUE);
+
+                                        // Compute new zoom level with 10% step (D-04)
+                                        const float step = 0.1f;
+                                        const float minZoom = 0.8f;   // 80% per THME-04
+                                        const float maxZoom = 8.0f;   // 800% per THME-04
+
+                                        if (vk == VK_OEM_PLUS) {
+                                            m_zoomLevel = min(maxZoom, m_zoomLevel + step);
+                                        } else if (vk == VK_OEM_MINUS) {
+                                            m_zoomLevel = max(minZoom, m_zoomLevel - step);
+                                        } else {  // 0x30 = '0'
+                                            m_zoomLevel = 1.0f;  // Ctrl+0 resets to 100%
+                                        }
+
+                                        // D-05: persist immediately to settings.json
+                                        g_settings.zoomLevel = m_zoomLevel;
+                                        if (!m_configPath.empty()) {
+                                            g_settings.save(m_configPath);
+                                        }
+
+                                        // Post zoom level to JS
+                                        postZoomToJs(m_zoomLevel);
+
+                                        return S_OK;
+                                    }).Get(),
+                                &m_accelKeyToken);
 
                             // Configure settings per UI-SPEC Phase-Specific Note 5
                             wil::com_ptr<ICoreWebView2Settings> settings;
@@ -247,6 +311,10 @@ void PreviewPanel::initWebView2() {
                                 m_pendingFilePath.clear();
                                 renderMarkdown(pending);
                             }
+
+                            // Apply persisted zoom level (D-05) — use g_settings.zoomLevel which was loaded in onNppReady()
+                            m_zoomLevel = g_settings.zoomLevel;
+                            applyInitialZoom(m_zoomLevel);
 
                             // Wire JS->C++ message channel (used by export in Plan 02-04)
                             // T-02-04 mitigation: handler wraps parse in try/catch; no shell/exec
@@ -428,6 +496,24 @@ void PreviewPanel::showIdle() {
     if (!m_webview || !m_webview2Initialized) return;
     nlohmann::json j;
     j["type"] = "idle";
+    std::string jsonStr = j.dump();
+    std::wstring wjson = Utf8ToWide(jsonStr);
+    m_webview->PostWebMessageAsJson(wjson.c_str());
+}
+
+// Phase 3: Apply initial zoom level from persisted settings (D-05, THME-04)
+// Called after WebView2 navigation completes and JS is ready to receive messages.
+void PreviewPanel::applyInitialZoom(float level) {
+    m_zoomLevel = level;
+    postZoomToJs(level);
+}
+
+// Phase 3: Post {type:"zoom", level:N} to WebView2 JS dispatcher
+void PreviewPanel::postZoomToJs(float level) {
+    if (!m_webview || !m_webview2Initialized) return;
+    nlohmann::json j;
+    j["type"] = "zoom";
+    j["level"] = level;
     std::string jsonStr = j.dump();
     std::wstring wjson = Utf8ToWide(jsonStr);
     m_webview->PostWebMessageAsJson(wjson.c_str());

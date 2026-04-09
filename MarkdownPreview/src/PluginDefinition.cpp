@@ -67,6 +67,9 @@ void onNppReady() {
     // Load persisted settings
     g_settings.load(g_configPath);
 
+    // Phase 3: Pass config path to PreviewPanel for zoom settings persistence (D-05)
+    g_previewPanel.setConfigPath(g_configPath);
+
     // Initialize preview panel (lazy - window created on first toggle per D-06)
     g_previewPanel.init(g_hInstance, nppData._nppHandle);
 

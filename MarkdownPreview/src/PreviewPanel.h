@@ -26,6 +26,8 @@ public:
     void scrollToLine(int line);                          // post {type:"scroll", line:N} to JS
     void updateFileVirtualHost(const std::wstring& filePath);  // map file.mdpreview to file's parent dir
     void triggerExport();                                 // post {type:"export"} to JS; sets m_exportFilePath
+    void setConfigPath(const std::wstring& path) { m_configPath = path; }  // called from onNppReady()
+    void applyInitialZoom(float level);  // post zoom message after WebView2 nav completes
 
 private:
     void createHostWindow();
@@ -69,4 +71,14 @@ private:
     std::wstring m_pendingFilePath;  // stores filePath when renderMarkdown() is called before WebView2 is ready
     std::wstring m_exportFilePath;  // set before sending export trigger; used in exportReady handler
     EventRegistrationToken m_webMessageReceivedToken = {};
+
+    // Phase 3: zoom controls (THME-04, D-04, D-05)
+    float m_zoomLevel = 1.0f;
+    EventRegistrationToken m_accelKeyToken = {};
+    std::wstring m_configPath;  // stored for settings save in AcceleratorKeyPressed handler
+
+    // Phase 3: environment pointer — required for PDF export (Plan 04)
+    wil::com_ptr<ICoreWebView2Environment> m_environment;
+
+    void postZoomToJs(float level);  // post {type:"zoom", level:N} to WebView2
 };

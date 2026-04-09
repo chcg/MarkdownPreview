@@ -12,6 +12,7 @@ void Settings::load(const std::wstring& configPath) {
     try {
         nlohmann::json j = nlohmann::json::parse(f);
         panelVisible = j.value("panelVisible", false);
+        zoomLevel = j.value("zoomLevel", 1.0f);
     } catch (...) {
         // T-01-04 mitigation: use defaults on parse error
         // Plugin continues to function with default settings
@@ -32,6 +33,7 @@ void Settings::save(const std::wstring& configPath) {
 
     nlohmann::json j;
     j["panelVisible"] = panelVisible;
+    j["zoomLevel"] = zoomLevel;
     std::ofstream f(configPath);
     if (f.is_open()) {
         f << j.dump(2);
