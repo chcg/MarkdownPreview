@@ -773,9 +773,19 @@ LRESULT CALLBACK PreviewPanel::wndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARA
     }
     case WM_NOTIFY: {
         NMHDR* nmhdr = reinterpret_cast<NMHDR*>(lParam);
+        // WR-05: Validate source HWND and restrict URL scheme before calling ShellExecuteW.
+        // Any process can post WM_NOTIFY to this window; without hwndFrom validation an
+        // attacker could trigger ShellExecuteW with an arbitrary URL or protocol handler.
         if (nmhdr->code == NM_CLICK || nmhdr->code == NM_RETURN) {
-            PNMLINK link = reinterpret_cast<PNMLINK>(lParam);
-            ShellExecuteW(NULL, L"open", link->item.szUrl, NULL, NULL, SW_SHOWNORMAL);
+            PreviewPanel* self = reinterpret_cast<PreviewPanel*>(
+                ::GetWindowLongPtr(hWnd, GWLP_USERDATA));
+            if (self && nmhdr->hwndFrom == self->m_hFallback) {
+                PNMLINK link = reinterpret_cast<PNMLINK>(lParam);
+                // Only open https:// links — reject file://, ms-msdt://, etc.
+                if (wcsncmp(link->item.szUrl, L"https://", 8) == 0) {
+                    ShellExecuteW(NULL, L"open", link->item.szUrl, NULL, NULL, SW_SHOWNORMAL);
+                }
+            }
         }
         break;
     }
