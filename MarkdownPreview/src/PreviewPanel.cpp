@@ -135,18 +135,26 @@ void PreviewPanel::registerPanel() {
     // Register with Notepad++ docking manager
     // Per D-01: dock on right side by default
     // Per Pitfall 4: register ONCE, then use DMMSHOW/DMMHIDE only
-    tTbData dockData = {};
-    dockData.hClient = m_hPanel;
-    dockData.pszName = PANEL_TITLE;
-    dockData.dlgID = 0;  // Index into funcItems
-    dockData.uMask = DWS_DF_CONT_RIGHT;
-    dockData.hIconTab = nullptr;
-    dockData.pszAddInfo = nullptr;
-    dockData.rcFloat = {};
-    dockData.iPrevCont = -1;
-    dockData.pszModuleName = MODULE_NAME;
+    //
+    // LIFETIME REQUIREMENT: NPP's docking manager stores raw pointers into tTbData
+    // (pszName, pszModuleName) in its internal _vTbData container and reads them later
+    // during redraws, tab label painting, and panel queries. The struct MUST remain
+    // allocated for the entire lifetime of the docked panel. m_dockData is a member
+    // variable (lives until PreviewPanel is destroyed in onNppShutdown) — NOT a local.
+    // Using a local stack variable here would leave NPP holding dangling pointers,
+    // causing an access violation in NPP's own WndProc on the next docking UI update.
+    m_dockData = {};
+    m_dockData.hClient = m_hPanel;
+    m_dockData.pszName = PANEL_TITLE;
+    m_dockData.dlgID = 0;  // Index into funcItems
+    m_dockData.uMask = DWS_DF_CONT_RIGHT;
+    m_dockData.hIconTab = nullptr;
+    m_dockData.pszAddInfo = nullptr;
+    m_dockData.rcFloat = {};
+    m_dockData.iPrevCont = -1;
+    m_dockData.pszModuleName = MODULE_NAME;
 
-    ::SendMessage(m_nppHandle, NPPM_DMMREGASDCKDLG, 0, reinterpret_cast<LPARAM>(&dockData));
+    ::SendMessage(m_nppHandle, NPPM_DMMREGASDCKDLG, 0, reinterpret_cast<LPARAM>(&m_dockData));
 
     // Per D-06: lazy check -- only when panel first opens
     if (checkWebView2Available()) {

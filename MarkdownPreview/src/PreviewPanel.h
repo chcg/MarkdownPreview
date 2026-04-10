@@ -8,6 +8,7 @@
 #include <WebView2.h>
 #include <wrl.h>
 #include <wil/com.h>
+#include "../include/Docking.h"
 
 class PreviewPanel {
 public:
@@ -84,6 +85,12 @@ private:
 
     bool m_printToPdfInProgress = false;  // guard: only one PrintToPdf in flight at a time
     float m_savedZoomForPdf = 1.0f;       // zoom level saved before PDF export, restored after
+
+    // Docking registration data — must outlive registerPanel() because NPP's docking manager
+    // stores raw pointers into this struct (pszName, pszModuleName) and dereferences them
+    // later during redraws and panel updates. A local/stack variable would produce dangling
+    // pointers in NPP and crash NPP's own window procedure on the next docking UI operation.
+    tTbData m_dockData = {};
 
     void postZoomToJs(float level);  // post {type:"zoom", level:N} to WebView2
 };
