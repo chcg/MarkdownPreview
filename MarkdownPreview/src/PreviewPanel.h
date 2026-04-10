@@ -49,6 +49,8 @@ private:
     std::wstring getCurrentText();                         // retrieves text from active Scintilla view
     void handleJsMessage(const std::wstring& message);    // dispatch JS->C++ messages
     void saveExportedHtml(const std::string& htmlUtf8);   // write HTML string to disk (UTF-8 BOM)
+    // SCRL-02: navigate editor to source line on preview click
+    void navigateEditorToLine(int line);
 
     static const UINT_PTR DEBOUNCE_TIMER_ID = 1;
 

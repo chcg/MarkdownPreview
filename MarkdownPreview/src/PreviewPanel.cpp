@@ -776,10 +776,36 @@ void PreviewPanel::handleJsMessage(const std::wstring& message) {
                 saveExportedHtml(htmlContent);
             }
         }
-        // Future message types added here (scroll feedback, etc.)
+        else if (type == "lineClick") {
+            // SCRL-02, D-04: navigate editor to clicked source line
+            int line = j.value("line", -1);
+            if (line >= 0) {
+                navigateEditorToLine(line);
+            }
+        }
     } catch (...) {
         // Malformed message — ignore silently
     }
+}
+
+// SCRL-02, D-03, D-04: Move editor caret to source line N (0-indexed) and give editor focus.
+// Uses same Scintilla handle retrieval as getCurrentText().
+// SCI_ENSUREVISIBLE expands collapsed folds so the line is not hidden.
+// SCI_GOTOLINE moves the caret to line start and auto-scrolls into view.
+// SCI_SCROLLCARET ensures the line is visible even in split views.
+// SetFocus() gives keyboard focus back to the editor (D-03).
+void PreviewPanel::navigateEditorToLine(int line) {
+    int sciId = 0;
+    ::SendMessage(m_nppHandle, NPPM_GETCURRENTSCINTILLA, 0,
+                  reinterpret_cast<LPARAM>(&sciId));
+    HWND hSci = (sciId == 0) ? nppData._scintillaMainHandle
+                              : nppData._scintillaSecondHandle;
+    if (!hSci) return;
+
+    ::SendMessage(hSci, SCI_ENSUREVISIBLE, static_cast<WPARAM>(line), 0);
+    ::SendMessage(hSci, SCI_GOTOLINE,      static_cast<WPARAM>(line), 0);
+    ::SendMessage(hSci, SCI_SCROLLCARET,   0, 0);
+    ::SetFocus(hSci);
 }
 
 LRESULT CALLBACK PreviewPanel::wndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
