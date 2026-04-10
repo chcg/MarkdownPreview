@@ -766,9 +766,16 @@ LRESULT CALLBACK PreviewPanel::wndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARA
             ::KillTimer(hWnd, PreviewPanel::DEBOUNCE_TIMER_ID);
             PreviewPanel* self = reinterpret_cast<PreviewPanel*>(
                 ::GetWindowLongPtr(hWnd, GWLP_USERDATA));
-            try {
+            // Use __try/__except rather than catch(...): /EHsc catch(...) does not catch
+            // SEH hardware faults (access violations).  wndProc is a WNDPROC callback —
+            // any unhandled exception here crosses the Windows message-dispatch boundary
+            // and calls std::terminate().  self and m_renderPending are raw/POD — no
+            // local C++ destructors, so __try/__except compiles without restriction.
+            __try {
                 if (self && self->m_renderPending) self->doRender();
-            } catch (...) {}
+            } __except (EXCEPTION_EXECUTE_HANDLER) {
+                // Swallow. Losing one render is better than crashing NPP.
+            }
             return 0;
         }
         break;

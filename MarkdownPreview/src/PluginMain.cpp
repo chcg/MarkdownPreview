@@ -38,37 +38,48 @@ extern "C" __declspec(dllexport) BOOL isUnicode() {
 }
 
 extern "C" __declspec(dllexport) void beNotified(SCNotification* notification) {
-    switch (notification->nmhdr.code) {
-    case NPPN_READY:
-        // Notepad++ is fully initialized — load settings and init panel
-        onNppReady();
-        break;
-    case NPPN_SHUTDOWN:
-        // Notepad++ is about to shut down — persist settings
-        onNppShutdown();
-        commandMenuCleanUp();
-        break;
-    case NPPN_TBMODIFICATION:
-        // Toolbar modification opportunity (for toolbar button, if needed)
-        break;
-    case NPPN_BUFFERACTIVATED:
-        // File switched or opened — auto-open preview for .md files (REND-01)
-        onBufferActivated(notification->nmhdr.idFrom);
-        break;
-    case NPPN_DARKMODECHANGED:
-        // Notepad++ dark/light mode toggled (THME-03)
-        onDarkModeChanged();
-        break;
-    case SCN_MODIFIED:
-        // Text inserted or deleted — schedule debounced re-render (REND-02)
-        try { onScnModified(notification); } catch (...) {}
-        break;
-    case SCN_UPDATEUI:
-        // Caret/scroll position changed — placeholder for scroll sync (Plan 02-03)
-        try { onScnUpdateUi(notification); } catch (...) {}
-        break;
-    default:
-        break;
+    // Guard the entire dispatch against both C++ exceptions and SEH hardware faults
+    // (access violations, stack overflow, etc.).  beNotified() is called from
+    // Notepad++'s own WndProc — any unhandled exception here crosses an extern "C"
+    // frame boundary and calls std::terminate(), silently killing NPP.
+    // __try/__except catches SEH; catch(...) under /EHsc does NOT.
+    // This function has no local C++ objects, so __try/__except compiles cleanly.
+    __try {
+        switch (notification->nmhdr.code) {
+        case NPPN_READY:
+            // Notepad++ is fully initialized — load settings and init panel
+            onNppReady();
+            break;
+        case NPPN_SHUTDOWN:
+            // Notepad++ is about to shut down — persist settings
+            onNppShutdown();
+            commandMenuCleanUp();
+            break;
+        case NPPN_TBMODIFICATION:
+            // Toolbar modification opportunity (for toolbar button, if needed)
+            break;
+        case NPPN_BUFFERACTIVATED:
+            // File switched or opened — auto-open preview for .md files (REND-01)
+            onBufferActivated(notification->nmhdr.idFrom);
+            break;
+        case NPPN_DARKMODECHANGED:
+            // Notepad++ dark/light mode toggled (THME-03)
+            onDarkModeChanged();
+            break;
+        case SCN_MODIFIED:
+            // Text inserted or deleted — schedule debounced re-render (REND-02)
+            onScnModified(notification);
+            break;
+        case SCN_UPDATEUI:
+            // Caret/scroll position changed — scroll sync (Plan 02-03)
+            onScnUpdateUi(notification);
+            break;
+        default:
+            break;
+        }
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        // Swallow all exceptions (C++ and SEH) at the plugin boundary.
+        // Losing one render/scroll update is far better than crashing NPP.
     }
 }
 
