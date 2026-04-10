@@ -342,6 +342,13 @@ void PreviewPanel::initWebView2() {
                                 Callback<ICoreWebView2NavigationCompletedEventHandler>(
                                     [this](ICoreWebView2* /*sender*/,
                                            ICoreWebView2NavigationCompletedEventArgs* /*args*/) -> HRESULT {
+                                        // WR-03: Unregister immediately so setup fires only on the
+                                        // first navigation. Without this, any future Navigate() call
+                                        // (e.g. error recovery) would replay zoom/theme/pending render.
+                                        if (m_navigationCompletedToken.value != 0) {
+                                            m_webview->remove_NavigationCompleted(m_navigationCompletedToken);
+                                            m_navigationCompletedToken = {};
+                                        }
                                         // Guard: this callback crosses a COM callback boundary.
                                         // Under /EHa, catch(...) covers both C++ and SEH faults.
                                         try {
