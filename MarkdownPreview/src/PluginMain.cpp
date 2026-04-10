@@ -38,13 +38,20 @@ extern "C" __declspec(dllexport) BOOL isUnicode() {
 }
 
 extern "C" __declspec(dllexport) void beNotified(SCNotification* notification) {
-    // Guard the entire dispatch against both C++ exceptions and SEH hardware faults
-    // (access violations, stack overflow, etc.).  beNotified() is called from
-    // Notepad++'s own WndProc — any unhandled exception here crosses an extern "C"
-    // frame boundary and calls std::terminate(), silently killing NPP.
-    // __try/__except catches SEH; catch(...) under /EHsc does NOT.
-    // This function has no local C++ objects, so __try/__except compiles cleanly.
-    __try {
+    // Guard the entire dispatch against both C++ exceptions and hardware SEH faults.
+    // beNotified() is called from Notepad++'s own WndProc — any unhandled exception
+    // crosses the extern "C" frame boundary and calls std::terminate(), killing NPP.
+    //
+    // We use try/catch(...) here (not __try/__except) because:
+    //   - The project is compiled with /EHa (ExceptionHandling=Async in the vcxproj).
+    //   - Under /EHa, catch(...) catches BOTH C++ exceptions AND hardware SEH faults
+    //     (access violations, stack overflow, etc.).
+    //   - __try/__except under /EHsc does NOT catch C++ exceptions, and LTCG (Release
+    //     build WholeProgramOptimization) can inline functions with C++ objects into a
+    //     __try body, silently generating broken exception tables (C2712 bypass).
+    //   - try/catch(...) with /EHa is correct in all configurations, does not have the
+    //     C++ object restriction of __try/__except, and works cleanly with LTCG.
+    try {
         switch (notification->nmhdr.code) {
         case NPPN_READY:
             // Notepad++ is fully initialized — load settings and init panel
@@ -77,8 +84,8 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification* notification) {
         default:
             break;
         }
-    } __except (EXCEPTION_EXECUTE_HANDLER) {
-        // Swallow all exceptions (C++ and SEH) at the plugin boundary.
+    } catch (...) {
+        // Swallow all exceptions (C++ and SEH under /EHa) at the plugin boundary.
         // Losing one render/scroll update is far better than crashing NPP.
     }
 }

@@ -235,6 +235,8 @@ void PreviewPanel::initWebView2() {
                                 Callback<ICoreWebView2AcceleratorKeyPressedEventHandler>(
                                     [this](ICoreWebView2Controller* /*sender*/,
                                            ICoreWebView2AcceleratorKeyPressedEventArgs* args) -> HRESULT {
+                                        // Guard: COM callback boundary — /EHa catch(...) covers all faults.
+                                        try {
                                         COREWEBVIEW2_KEY_EVENT_KIND kind;
                                         args->get_KeyEventKind(&kind);
                                         if (kind != COREWEBVIEW2_KEY_EVENT_KIND_KEY_DOWN &&
@@ -285,6 +287,7 @@ void PreviewPanel::initWebView2() {
                                         // Post zoom level to JS
                                         postZoomToJs(m_zoomLevel);
 
+                                        } catch (...) {}
                                         return S_OK;
                                     }).Get(),
                                 &m_accelKeyToken);
@@ -331,14 +334,18 @@ void PreviewPanel::initWebView2() {
                                 Callback<ICoreWebView2NavigationCompletedEventHandler>(
                                     [this](ICoreWebView2* /*sender*/,
                                            ICoreWebView2NavigationCompletedEventArgs* /*args*/) -> HRESULT {
-                                        applyInitialZoom(m_zoomLevel);
-                                        // Replay stored theme: setTheme() may have been called before WebView2 was ready.
-                                        setTheme(m_isDark);
-                                        if (!m_pendingFilePath.empty()) {
-                                            std::wstring pending = m_pendingFilePath;
-                                            m_pendingFilePath.clear();
-                                            renderMarkdown(pending);
-                                        }
+                                        // Guard: this callback crosses a COM callback boundary.
+                                        // Under /EHa, catch(...) covers both C++ and SEH faults.
+                                        try {
+                                            applyInitialZoom(m_zoomLevel);
+                                            // Replay stored theme: setTheme() may have been called before WebView2 was ready.
+                                            setTheme(m_isDark);
+                                            if (!m_pendingFilePath.empty()) {
+                                                std::wstring pending = m_pendingFilePath;
+                                                m_pendingFilePath.clear();
+                                                renderMarkdown(pending);
+                                            }
+                                        } catch (...) {}
                                         return S_OK;
                                     }).Get(),
                                 &m_navigationCompletedToken);
@@ -349,11 +356,14 @@ void PreviewPanel::initWebView2() {
                                 Callback<ICoreWebView2WebMessageReceivedEventHandler>(
                                     [this](ICoreWebView2* /*sender*/,
                                            ICoreWebView2WebMessageReceivedEventArgs* args) -> HRESULT {
-                                        wil::unique_cotaskmem_string rawMsg;
-                                        HRESULT hr = args->TryGetWebMessageAsString(&rawMsg);
-                                        if (SUCCEEDED(hr) && rawMsg) {
-                                            handleJsMessage(rawMsg.get());
-                                        }
+                                        // Guard: COM callback boundary — /EHa catch(...) covers all faults.
+                                        try {
+                                            wil::unique_cotaskmem_string rawMsg;
+                                            HRESULT hr = args->TryGetWebMessageAsString(&rawMsg);
+                                            if (SUCCEEDED(hr) && rawMsg) {
+                                                handleJsMessage(rawMsg.get());
+                                            }
+                                        } catch (...) {}
                                         return S_OK;
                                     }).Get(),
                                 &m_webMessageReceivedToken);
@@ -715,16 +725,21 @@ void PreviewPanel::triggerPdfExport() {
         printSettings.get(),
         Callback<ICoreWebView2PrintToPdfCompletedHandler>(
             [this](HRESULT errorCode, BOOL isSuccessful) -> HRESULT {
-                m_printToPdfInProgress = false;
+                // Guard: COM callback boundary — /EHa catch(...) covers all faults.
+                try {
+                    m_printToPdfInProgress = false;
 
-                // ZOOM RESTORE: Restore the zoom level that was active before PDF export.
-                // This runs on the UI thread (WebView2 completion callbacks are marshalled
-                // back to the thread that called PrintToPdf).
-                postZoomToJs(m_savedZoomForPdf);
+                    // ZOOM RESTORE: Restore the zoom level that was active before PDF export.
+                    // This runs on the UI thread (WebView2 completion callbacks are marshalled
+                    // back to the thread that called PrintToPdf).
+                    postZoomToJs(m_savedZoomForPdf);
 
-                // D-06: Silent completion — no dialog, no notification on success or failure
-                UNREFERENCED_PARAMETER(errorCode);
-                UNREFERENCED_PARAMETER(isSuccessful);
+                    // D-06: Silent completion — no dialog, no notification on success or failure
+                    UNREFERENCED_PARAMETER(errorCode);
+                    UNREFERENCED_PARAMETER(isSuccessful);
+                } catch (...) {
+                    m_printToPdfInProgress = false;  // ensure reset even if postZoomToJs throws
+                }
                 return S_OK;
             }).Get());
 
@@ -766,14 +781,13 @@ LRESULT CALLBACK PreviewPanel::wndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARA
             ::KillTimer(hWnd, PreviewPanel::DEBOUNCE_TIMER_ID);
             PreviewPanel* self = reinterpret_cast<PreviewPanel*>(
                 ::GetWindowLongPtr(hWnd, GWLP_USERDATA));
-            // Use __try/__except rather than catch(...): /EHsc catch(...) does not catch
-            // SEH hardware faults (access violations).  wndProc is a WNDPROC callback —
-            // any unhandled exception here crosses the Windows message-dispatch boundary
-            // and calls std::terminate().  self and m_renderPending are raw/POD — no
-            // local C++ destructors, so __try/__except compiles without restriction.
-            __try {
+            // Use try/catch(...) with /EHa: under /EHa, catch(...) catches both C++
+            // exceptions and hardware SEH faults (access violations etc.).  wndProc is
+            // a WNDPROC callback — any unhandled exception crosses the Windows message-
+            // dispatch boundary and calls std::terminate(), killing NPP silently.
+            try {
                 if (self && self->m_renderPending) self->doRender();
-            } __except (EXCEPTION_EXECUTE_HANDLER) {
+            } catch (...) {
                 // Swallow. Losing one render is better than crashing NPP.
             }
             return 0;

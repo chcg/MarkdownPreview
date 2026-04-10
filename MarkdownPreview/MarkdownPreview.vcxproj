@@ -103,6 +103,7 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;MARKDOWNPREVIEW_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <ExceptionHandling>Async</ExceptionHandling>
       <AdditionalIncludeDirectories>$(ProjectDir)include;$(ProjectDir)src;$(SolutionDir)packages\Microsoft.Web.WebView2.1.0.3856.49\build\native\include;$(SolutionDir)packages\Microsoft.Windows.ImplementationLibrary.1.0.240803.1\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Disabled</Optimization>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -127,6 +128,7 @@ xcopy /Y /E /I "$(ProjectDir)assets" "$(OutDir)assets\"</Command>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;MARKDOWNPREVIEW_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <ExceptionHandling>Async</ExceptionHandling>
       <AdditionalIncludeDirectories>$(ProjectDir)include;$(ProjectDir)src;$(SolutionDir)packages\Microsoft.Web.WebView2.1.0.3856.49\build\native\include;$(SolutionDir)packages\Microsoft.Windows.ImplementationLibrary.1.0.240803.1\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>MaxSpeed</Optimization>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
@@ -151,6 +153,7 @@ xcopy /Y /E /I "$(ProjectDir)assets" "$(OutDir)assets\"</Command>
       <PreprocessorDefinitions>_DEBUG;_WINDOWS;_USRDLL;MARKDOWNPREVIEW_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <ExceptionHandling>Async</ExceptionHandling>
       <AdditionalIncludeDirectories>$(ProjectDir)include;$(ProjectDir)src;$(SolutionDir)packages\Microsoft.Web.WebView2.1.0.3856.49\build\native\include;$(SolutionDir)packages\Microsoft.Windows.ImplementationLibrary.1.0.240803.1\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Disabled</Optimization>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -175,6 +178,7 @@ xcopy /Y /E /I "$(ProjectDir)assets" "$(OutDir)assets\"</Command>
       <PreprocessorDefinitions>NDEBUG;_WINDOWS;_USRDLL;MARKDOWNPREVIEW_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <ExceptionHandling>Async</ExceptionHandling>
       <AdditionalIncludeDirectories>$(ProjectDir)include;$(ProjectDir)src;$(SolutionDir)packages\Microsoft.Web.WebView2.1.0.3856.49\build\native\include;$(SolutionDir)packages\Microsoft.Windows.ImplementationLibrary.1.0.240803.1\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>MaxSpeed</Optimization>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
