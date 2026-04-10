@@ -30,8 +30,9 @@
 #define NPPN_FILEOPENED         (NPPN_FIRST + 4)
 #define NPPN_FILECLOSED         (NPPN_FIRST + 5)
 #define NPPN_FILEBEFOREOPEN     (NPPN_FIRST + 6)
-#define NPPN_BUFFERACTIVATED    (NPPN_FIRST + 10)  // corrected from +9; official NPP source = 1010
-#define NPPN_SHUTDOWN           (NPPN_FIRST + 11)
+#define NPPN_SHUTDOWN           (NPPN_FIRST + 9)   // official NPP: NPPN_FIRST+9 = 1009 (NOT +11)
+#define NPPN_BUFFERACTIVATED    (NPPN_FIRST + 10)  // official NPP: NPPN_FIRST+10 = 1010
+// NPPN_LANGCHANGED = (NPPN_FIRST + 11) = 1011 — we don't handle it, falls to default
 
 // Phase 2 additions — verified against official Notepad++ source
 #define NPPM_GETCURRENTSCINTILLA        (NPPMSG + 4)

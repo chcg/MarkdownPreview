@@ -15,6 +15,15 @@ Settings g_settings;
 static HINSTANCE g_hInstance = nullptr;
 static std::wstring g_configPath;
 
+// Cached path of the currently active .md file (or empty if not a .md file).
+// Updated by onBufferActivated(). Read by onScnModified() to avoid calling back
+// into NPP's main window (SendMessage NPPM_GETFULLCURRENTPATH) from within a
+// Scintilla notification handler — that call is the confirmed crash trigger:
+// NPP's NPPM_GETFULLCURRENTPATH handler dereferences getCurrentBuffer() without
+// a null guard, and getCurrentBuffer() can return nullptr during SC_MOD_BEFOREINSERT
+// notifications when the document state is transient.
+static std::wstring g_currentMdFilePath;
+
 // Shortcut key: Ctrl+Shift+M for Toggle Preview (D-08)
 static ShortcutKey toggleShortcut = { true, false, true, 'M' };
 
@@ -130,6 +139,12 @@ void onBufferActivated(UINT_PTR bufferId) {
     bool isMd = filePath.size() >= 3 &&
         (_wcsicmp(filePath.c_str() + filePath.size() - 3, L".md") == 0);
 
+    // Cache the active .md path so onScnModified() can check it without calling
+    // SendMessage(NPPM_GETFULLCURRENTPATH) from within a Scintilla notification
+    // handler — that call crashes NPP when getCurrentBuffer() returns nullptr
+    // during SC_MOD_BEFOREINSERT notifications.
+    g_currentMdFilePath = isMd ? filePath : std::wstring();
+
     if (isMd) {
         // D-01: auto-open panel whenever a .md file is activated, even if previously closed
         if (!g_previewPanel.isVisible()) {
@@ -157,13 +172,11 @@ void onDarkModeChanged() {
 void onScnModified(SCNotification* notification) {
     // Only react to text insertions and deletions (not fold/attribute changes)
     if (!(notification->modificationType & (SC_MOD_INSERTTEXT | SC_MOD_DELETETEXT))) return;
-    // Only trigger if a .md file is currently active
-    wchar_t path[MAX_PATH] = {};
-    ::SendMessage(nppData._nppHandle, NPPM_GETFULLCURRENTPATH, MAX_PATH, reinterpret_cast<LPARAM>(path));
-    std::wstring filePath(path);
-    bool isMd = filePath.size() >= 3 &&
-        (_wcsicmp(filePath.c_str() + filePath.size() - 3, L".md") == 0);
-    if (isMd) {
+    // Use the cached path set by onBufferActivated() — do NOT call SendMessage back into NPP
+    // from within a Scintilla notification handler. NPPM_GETFULLCURRENTPATH causes NPP to call
+    // _pEditView->getCurrentBuffer()->getFullPathName() without a null guard; getCurrentBuffer()
+    // returns nullptr during SC_MOD_BEFOREINSERT (before the edit is committed), crashing NPP.
+    if (!g_currentMdFilePath.empty()) {
         g_previewPanel.scheduleRender();
     }
 }
