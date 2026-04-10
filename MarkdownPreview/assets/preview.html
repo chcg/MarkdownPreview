@@ -305,7 +305,11 @@
             ? window.mermaid.default : null);
 
     if (_mermaid) {
-        _mermaid.initialize({ startOnLoad: false, theme: 'default', securityLevel: 'strict' });
+        // securityLevel: 'loose' — DOMPurify strict mode can fail silently in WebView2 virtual host
+        // contexts (appassets.mdpreview), causing render() to reject and fall back to code block.
+        // We apply our own security layer: DOMParser parse + querySelectorAll('script').remove()
+        // in the render().then() handler (WR-01), which is sufficient given WebView2's OS sandbox.
+        _mermaid.initialize({ startOnLoad: false, theme: 'default', securityLevel: 'loose' });
     }
 
     // =========================================================================
