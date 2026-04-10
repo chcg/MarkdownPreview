@@ -1,85 +1,51 @@
 ---
 gsd_state_version: 1.0
 milestone: v1.0
-milestone_name: milestone
-status: executing
-stopped_at: Phase 2 context gathered (discuss mode)
-last_updated: "2026-04-10T16:04:31.527Z"
-last_activity: 2026-04-10 -- Phase 4 planning complete
+milestone_name: MVP
+status: complete
+last_updated: "2026-04-10T22:30:00.000Z"
+last_activity: 2026-04-10 -- v1.0 milestone archived
 progress:
   total_phases: 4
-  completed_phases: 3
-  total_plans: 16
-  completed_plans: 13
-  percent: 81
+  completed_phases: 4
+  total_plans: 17
+  completed_plans: 17
+  percent: 100
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-08)
+See: .planning/PROJECT.md (updated 2026-04-10 after v1.0)
 
 **Core value:** Open a markdown file, see it beautifully rendered in real-time as you type -- no context switching, no external tools.
-**Current focus:** Phase 04 — polish-publication
+**Current focus:** v1.0 shipped — planning next milestone
 
 ## Current Position
 
-Phase: 04 (polish-publication) — CONTEXT GATHERED
-Plan: 0 of TBD
-Status: Ready to execute
-Last activity: 2026-04-10 -- Phase 4 planning complete
+Milestone: v1.0 MVP — SHIPPED 2026-04-10
+All 4 phases complete. All 17 plans complete.
 
-Progress: [██████████] 100% (phases 1-3 complete)
-
-## Performance Metrics
-
-**Velocity:**
-
-- Total plans completed: 3
-- Average duration: -
-- Total execution time: 0 hours
-
-**By Phase:**
-
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| 01 | 3 | - | - |
-
-**Recent Trend:**
-
-- Last 5 plans: -
-- Trend: -
-
-*Updated after each plan completion*
-| Phase 01-plugin-foundation P01 | 16min | 3 tasks | 12 files |
-| Phase 01-plugin-foundation P02 | 3min | 2 tasks | 8 files |
+Progress: [██████████] 100% (all phases shipped)
 
 ## Accumulated Context
 
 ### Decisions
 
-Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work:
-
--
-
-- [Phase 01-plugin-foundation]: PlatformToolset v145 (VS 2026) instead of v143 (VS 2022) due to dev environment
-- [Phase 01-plugin-foundation]: Plugin display name MarkdownPreview with Ctrl+Shift+M shortcut for Toggle Preview
-- [Phase 01-plugin-foundation]: onNppReady/onNppShutdown as separate functions called from PluginMain beNotified handler
-- [Phase 01-plugin-foundation]: CoInitializeEx called in pluginInit (DLL_PROCESS_ATTACH) for early COM STA readiness
+All key decisions logged in PROJECT.md Key Decisions table.
 
 ### Pending Todos
 
-None yet.
+- Update `manifest.json` `id` field with actual SHA-256 from `package.ps1` before plugin list PR submission
+- Update `manifest.json` `repository` and `homepage` URLs to match actual GitHub repo before submission
 
 ### Blockers/Concerns
 
-- WebView2 runtime detection API needs verification (from research gaps)
-- @vscode/markdown-it-katex standalone behavior outside VS Code needs confirmation (Phase 3)
+None — all v1 blockers resolved.
 
 ## Session Continuity
 
-Last session: 2026-04-09T13:06:42.726Z
-Stopped at: Phase 2 context gathered (discuss mode)
-Resume file: .planning/phases/02-core-preview/02-CONTEXT.md
+Last session: 2026-04-10
+Stopped at: v1.0 milestone complete
+Next: Run `/gsd-new-milestone` to start v1.1 planning
