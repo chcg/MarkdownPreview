@@ -31,6 +31,11 @@ public:
     void applyInitialZoom(float level);  // post zoom message after WebView2 nav completes
     void triggerPdfExport();  // Phase 3: PDF export via WebView2 PrintToPdf (EXPT-02, EXPT-03)
 
+    // Phase 3 Gap: zoom methods called from NPP plugin FuncItem shortcuts (fire regardless of focus)
+    void zoomIn();    // Ctrl+= handler: increase zoom by 10%, clamp at 800%
+    void zoomOut();   // Ctrl+- handler: decrease zoom by 10%, clamp at 80%
+    void zoomReset(); // Ctrl+0 handler: reset zoom to 100%
+
 private:
     void createHostWindow();
     void registerPanel();

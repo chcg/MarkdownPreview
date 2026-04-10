@@ -35,6 +35,22 @@ static ShortcutKey exportShortcut = { true, false, true, 'E' };
 // Ctrl+Shift+P is not a default Notepad++ shortcut (A6: assumed free — verify during testing)
 static ShortcutKey pdfExportShortcut = { true, false, true, 'P' };
 
+// Shortcut key: Ctrl+= for Zoom In (preview panel)
+// VK_OEM_PLUS is the = key on US keyboards; Ctrl+= is the conventional zoom-in chord.
+// Not a default Notepad++ shortcut.
+static ShortcutKey zoomInShortcut    = { true, false, false, VK_OEM_PLUS };
+
+// Shortcut key: Ctrl+- for Zoom Out (preview panel)
+// VK_OEM_MINUS is the - key; Ctrl+- is the conventional zoom-out chord.
+// Not a default Notepad++ shortcut.
+static ShortcutKey zoomOutShortcut   = { true, false, false, VK_OEM_MINUS };
+
+// Shortcut key: Ctrl+0 for Zoom Reset (preview panel)
+// 0x30 is the virtual key code for the '0' digit key on US keyboards.
+// Ctrl+0 is the conventional "reset zoom to 100%" chord in web browsers.
+// Not a default Notepad++ shortcut.
+static ShortcutKey zoomResetShortcut = { true, false, false, 0x30 };
+
 void pluginInit(HANDLE hModule) {
     g_hInstance = reinterpret_cast<HINSTANCE>(hModule);
     // Per Pitfall 2: CoInitializeEx required before WebView2, safe to call early
@@ -72,6 +88,27 @@ void commandMenuInit() {
     funcItems[2]._cmdID = 0;
     funcItems[2]._init2Check = false;
     funcItems[2]._pShKey = &pdfExportShortcut;
+
+    // Menu item 3: Zoom In (Ctrl+=) — calls PreviewPanel::zoomIn() regardless of focus
+    wcscpy_s(funcItems[3]._itemName, menuItemSize, L"Zoom In Preview");
+    funcItems[3]._pFunc      = zoomInPreview;
+    funcItems[3]._cmdID      = 0;
+    funcItems[3]._init2Check = false;
+    funcItems[3]._pShKey     = &zoomInShortcut;
+
+    // Menu item 4: Zoom Out (Ctrl+-) — calls PreviewPanel::zoomOut() regardless of focus
+    wcscpy_s(funcItems[4]._itemName, menuItemSize, L"Zoom Out Preview");
+    funcItems[4]._pFunc      = zoomOutPreview;
+    funcItems[4]._cmdID      = 0;
+    funcItems[4]._init2Check = false;
+    funcItems[4]._pShKey     = &zoomOutShortcut;
+
+    // Menu item 5: Zoom Reset (Ctrl+0) — calls PreviewPanel::zoomReset() regardless of focus (D-04)
+    wcscpy_s(funcItems[5]._itemName, menuItemSize, L"Reset Preview Zoom");
+    funcItems[5]._pFunc      = zoomResetPreview;
+    funcItems[5]._cmdID      = 0;
+    funcItems[5]._init2Check = false;
+    funcItems[5]._pShKey     = &zoomResetShortcut;
 }
 
 void commandMenuCleanUp() {
@@ -208,6 +245,19 @@ void exportMarkdownAsPdf() {
         (_wcsicmp(filePath.c_str() + filePath.size() - 3, L".md") == 0);
     if (!isMd) return;
     g_previewPanel.triggerPdfExport();
+}
+
+// Phase 3 Gap: Zoom callbacks — called from NPP plugin menu shortcuts, fire regardless of focus.
+void zoomInPreview() {
+    g_previewPanel.zoomIn();
+}
+
+void zoomOutPreview() {
+    g_previewPanel.zoomOut();
+}
+
+void zoomResetPreview() {
+    g_previewPanel.zoomReset();
 }
 
 // Phase 2 Plan 03: Called on SCN_UPDATEUI — scroll sync (SCRL-01)

@@ -8,7 +8,7 @@
 #include "PreviewPanel.h"
 #include "Settings.h"
 
-const int NB_FUNC = 3;  // Toggle Preview + Export as HTML + Export as PDF
+const int NB_FUNC = 6;  // Toggle Preview + Export as HTML + Export as PDF + Zoom In + Zoom Out + Zoom Reset
 const wchar_t PLUGIN_NAME[] = L"MarkdownPreview";
 
 // External data set by PluginMain.cpp
@@ -37,3 +37,6 @@ void onScnUpdateUi(SCNotification* notification);
 void togglePreview();
 void exportMarkdown();   // menu command: triggers HTML export via WebView2 JS
 void exportMarkdownAsPdf();  // menu command: triggers PDF export via WebView2 PrintToPdf
+void zoomInPreview();    // menu command: increase preview zoom by 10% (Ctrl+=)
+void zoomOutPreview();   // menu command: decrease preview zoom by 10% (Ctrl+-)
+void zoomResetPreview(); // menu command: reset preview zoom to 100% (Ctrl+0, D-04)

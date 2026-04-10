@@ -263,37 +263,14 @@ void PreviewPanel::initWebView2() {
                                         bool isZoomKey = (vk == VK_OEM_PLUS || vk == VK_OEM_MINUS || vk == 0x30);
                                         if (!isZoomKey) return S_OK;
 
-                                        // Suppress WebView2 built-in zoom behavior
+                                        // Suppress WebView2 built-in zoom behavior regardless of focus state.
                                         args->put_Handled(TRUE);
 
-                                        // WR-02: Block zoom changes while PDF export is in flight.
-                                        // Allowing zoom during the reset/restore cycle causes m_zoomLevel
-                                        // and the JS zoom to diverge after the completion callback restores.
-                                        if (m_printToPdfInProgress) {
-                                            return S_OK;
-                                        }
-
-                                        // Compute new zoom level with 10% step (D-04)
-                                        const float step = 0.1f;
-                                        const float minZoom = 0.8f;   // 80% per THME-04
-                                        const float maxZoom = 8.0f;   // 800% per THME-04
-
-                                        if (vk == VK_OEM_PLUS) {
-                                            m_zoomLevel = min(maxZoom, m_zoomLevel + step);
-                                        } else if (vk == VK_OEM_MINUS) {
-                                            m_zoomLevel = max(minZoom, m_zoomLevel - step);
-                                        } else {  // 0x30 = '0'
-                                            m_zoomLevel = 1.0f;  // Ctrl+0 resets to 100%
-                                        }
-
-                                        // D-05: persist immediately to settings.json
-                                        g_settings.zoomLevel = m_zoomLevel;
-                                        if (!m_configPath.empty()) {
-                                            g_settings.save(m_configPath);
-                                        }
-
-                                        // Post zoom level to JS
-                                        postZoomToJs(m_zoomLevel);
+                                        // Phase 3 Gap: zoom is now handled via NPP plugin FuncItem shortcuts
+                                        // (zoomIn/zoomOut/zoomReset) which fire regardless of keyboard focus.
+                                        // Do not apply zoom here to avoid double-zoom if WebView2 happens to
+                                        // have focus while the user presses Ctrl+=/−/0.
+                                        return S_OK;
 
                                         } catch (...) {}
                                         return S_OK;
@@ -573,6 +550,45 @@ void PreviewPanel::postZoomToJs(float level) {
     std::string jsonStr = j.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace);
     std::wstring wjson = Utf8ToWide(jsonStr);
     m_webview->PostWebMessageAsJson(wjson.c_str());
+}
+
+// Phase 3 Gap: zoomIn / zoomOut / zoomReset called from NPP plugin FuncItem shortcuts.
+// These fire regardless of keyboard focus (unlike AcceleratorKeyPressed).
+// Zoom step, clamp values, and persistence mirror AcceleratorKeyPressed handler (D-04, D-05).
+void PreviewPanel::zoomIn() {
+    const float step    = 0.1f;
+    const float maxZoom = 8.0f;
+    if (m_printToPdfInProgress) return;  // WR-02: guard same as AcceleratorKeyPressed
+    m_zoomLevel = min(maxZoom, m_zoomLevel + step);
+    g_settings.zoomLevel = m_zoomLevel;
+    if (!m_configPath.empty()) {
+        g_settings.save(m_configPath);
+    }
+    postZoomToJs(m_zoomLevel);
+}
+
+void PreviewPanel::zoomOut() {
+    const float step    = 0.1f;
+    const float minZoom = 0.8f;
+    if (m_printToPdfInProgress) return;  // WR-02: guard same as AcceleratorKeyPressed
+    m_zoomLevel = max(minZoom, m_zoomLevel - step);
+    g_settings.zoomLevel = m_zoomLevel;
+    if (!m_configPath.empty()) {
+        g_settings.save(m_configPath);
+    }
+    postZoomToJs(m_zoomLevel);
+}
+
+// D-04: Ctrl+0 resets zoom to exactly 1.0f (100%).
+// Delegates to applyInitialZoom() which sets m_zoomLevel and calls postZoomToJs.
+// Also persists the reset level to settings.json so it survives restart.
+void PreviewPanel::zoomReset() {
+    if (m_printToPdfInProgress) return;  // WR-02: guard same as zoomIn/zoomOut
+    applyInitialZoom(1.0f);
+    g_settings.zoomLevel = m_zoomLevel;  // m_zoomLevel is 1.0f after applyInitialZoom
+    if (!m_configPath.empty()) {
+        g_settings.save(m_configPath);
+    }
 }
 
 // Phase 2 Plan 03: Post scroll message to JS — {type:"scroll", line:N}
