@@ -80,7 +80,16 @@ blocked: 0
   reason: "User reported: it looks like a code block"
   severity: major
   test: 4
-  artifacts: []
+  root_cause: |
+    Mermaid's calculateTextDimensions appends a temp SVG to document.body for getBBox() measurement.
+    In the WebView2 layout (overflow:hidden flex body), getBBox() returns {width:0, height:0}, throwing
+    "svg element not in render tree". The .catch() in renderMermaidDiagrams() silently swallows the error,
+    leaving the <pre><code> block unchanged.
+  fix: |
+    In preview.html renderMermaidDiagrams(), create an off-screen layout container (position:absolute,
+    left:-9999px, width:800px, height:600px) and pass it as third arg to _mermaid.render().
+    This gives getBBox() a real layout context with non-zero dimensions.
+  artifacts: ["MarkdownPreview/assets/preview.html:437-468"]
   missing: []
 
 - truth: "Ctrl+=/- zooms the preview panel; Ctrl+0 resets to 100%; bounds clamped at 80%-800%"
@@ -88,7 +97,17 @@ blocked: 0
   reason: "User reported: The preview does not change, only the md file zooms"
   severity: major
   test: 7
-  artifacts: []
+  root_cause: |
+    AcceleratorKeyPressed only fires when WebView2 has keyboard focus. In normal usage, Scintilla
+    retains focus so Notepad++ intercepts Ctrl+= / Ctrl+- and applies them to the editor zoom.
+    The existing handler in PreviewPanel.cpp:243-301 is correct but unreachable without focus.
+    No NPP plugin shortcuts are registered for Ctrl+=/-.
+  fix: |
+    Register Ctrl+= and Ctrl+- as NPP plugin FuncItem shortcuts (ShortcutKey structs) in
+    PluginDefinition.cpp. Increase NB_FUNC from 3 to 5. Callbacks call g_previewPanel.zoomIn()
+    / zoomOut() regardless of focus. Remove or neutralize the AcceleratorKeyPressed handler
+    to avoid double-zoom.
+  artifacts: ["MarkdownPreview/src/PreviewPanel.cpp:238-301", "MarkdownPreview/src/PluginDefinition.cpp:28-36"]
   missing: []
 
 - truth: "PDF export produces a clean PDF of the rendered markdown"
@@ -96,5 +115,12 @@ blocked: 0
   reason: "User reported: It does, but it is filled with Syntax error in text mermaid version 11.14.0"
   severity: major
   test: 9
-  artifacts: []
+  root_cause: |
+    Downstream of Mermaid issue (test 4). When Mermaid's draw() throws, its inner catch calls
+    K5e.draw() which renders an error SVG into a temp div on document.body, then does NOT call
+    removeTempElements(). The orphaned error SVG persists on body and is captured by PrintToPdf.
+  fix: |
+    Fix test 4 (proper Mermaid container). When draw() succeeds, removeTempElements() is called
+    correctly and the error path never triggers. No separate fix needed for the PDF symptom.
+  artifacts: ["MarkdownPreview/assets/preview.html:437-468", "MarkdownPreview/assets/mermaid.min.js"]
   missing: []

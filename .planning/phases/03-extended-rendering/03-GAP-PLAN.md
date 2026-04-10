@@ -31,24 +31,30 @@ must_haves:
       provides: "renderMermaidDiagrams() with off-screen layout container"
       contains: "left:-9999px"
     - path: "MarkdownPreview/src/PluginDefinition.h"
-      provides: "NB_FUNC = 5"
-      contains: "NB_FUNC = 5"
+      provides: "NB_FUNC = 6"
+      contains: "NB_FUNC = 6"
     - path: "MarkdownPreview/src/PluginDefinition.cpp"
-      provides: "Zoom In and Zoom Out FuncItem registrations with ShortcutKey structs"
+      provides: "Zoom In, Zoom Out, and Zoom Reset FuncItem registrations with ShortcutKey structs"
       contains: "zoomInShortcut"
     - path: "MarkdownPreview/src/PreviewPanel.h"
-      provides: "public zoomIn() and zoomOut() method declarations"
+      provides: "public zoomIn(), zoomOut(), and zoomReset() method declarations"
       contains: "void zoomIn()"
     - path: "MarkdownPreview/src/PreviewPanel.cpp"
-      provides: "zoomIn() and zoomOut() implementations + neutralized AcceleratorKeyPressed zoom"
+      provides: "zoomIn(), zoomOut(), and zoomReset() implementations + neutralized AcceleratorKeyPressed zoom"
       contains: "void PreviewPanel::zoomIn()"
   key_links:
     - from: "PluginDefinition.cpp zoomIn callback"
       to: "PreviewPanel::zoomIn()"
       via: "g_previewPanel.zoomIn()"
+    - from: "PluginDefinition.cpp zoomResetPreview callback"
+      to: "PreviewPanel::zoomReset()"
+      via: "g_previewPanel.zoomReset()"
     - from: "PreviewPanel::zoomIn()"
       to: "WebView2 JS"
       via: "postZoomToJs(m_zoomLevel)"
+    - from: "PreviewPanel::zoomReset()"
+      to: "WebView2 JS"
+      via: "postZoomToJs(1.0f)"
     - from: "renderMermaidDiagrams() off-screen container"
       to: "_mermaid.render(id, source, container)"
       via: "third argument to mermaid.render()"
@@ -61,7 +67,8 @@ Close two major UAT gaps from Phase 3 testing:
    with real pixel dimensions.
 2. Ctrl+=/- zoom hotkeys are intercepted by Notepad++ before reaching WebView2 because Scintilla
    retains keyboard focus. Fix by registering them as NPP plugin FuncItem shortcuts that call
-   PreviewPanel zoom methods directly, bypassing the focus requirement.
+   PreviewPanel zoom methods directly, bypassing the focus requirement. Ctrl+0 (reset to 100%)
+   is also registered as a FuncItem shortcut (D-04).
 
 Purpose: Restore the two major failing UAT tests (4 and 7) and unblock the two dependent skipped
 tests (8 and 11) and the downstream PDF corruption (test 9).
@@ -98,14 +105,14 @@ From MarkdownPreview/src/PreviewPanel.cpp:
   void PreviewPanel::applyInitialZoom(float level) — sets m_zoomLevel + postZoomToJs
 
 From MarkdownPreview/src/PluginDefinition.h (current state):
-  const int NB_FUNC = 3;   // must become 5
+  const int NB_FUNC = 3;   // must become 6
   extern FuncItem funcItems[NB_FUNC];
 
 From MarkdownPreview/src/PluginDefinition.cpp commandMenuInit() (current items 0-2):
   funcItems[0] — Toggle Preview  (Ctrl+Shift+M)
   funcItems[1] — Export as HTML  (Ctrl+Shift+E)
   funcItems[2] — Export as PDF   (Ctrl+Shift+P)
-  // Items 3 and 4 are new: Zoom In, Zoom Out
+  // Items 3, 4, and 5 are new: Zoom In, Zoom Out, Zoom Reset
 
 From MarkdownPreview/assets/preview.html renderMermaidDiagrams() (lines 437-468):
   _mermaid.render(id, source)              // current — no container arg
@@ -233,9 +240,9 @@ A[Start] --> B[End]
 The preview panel should show a rendered SVG flowchart (not a code block). Also open a .md file
 with invalid Mermaid syntax and confirm it falls back to a code block.
 
-Build the solution first: `msbuild MarkdownPreview.sln /p:Configuration=Debug /p:Platform=x64`
-should succeed with zero errors (this is a JS-only change so no C++ compilation errors expected,
-but confirm the solution still builds cleanly).
+Build the solution first to confirm no regressions were introduced (this is a JS-only change so
+no C++ compilation errors are expected, but verify the solution still builds cleanly):
+<automated>msbuild MarkdownPreview.sln /p:Configuration=Debug /p:Platform=x64</automated>
   </verify>
   <done>
 - Valid Mermaid block renders as SVG diagram in the preview panel (not as a code block)
@@ -246,7 +253,7 @@ but confirm the solution still builds cleanly).
 </task>
 
 <task type="auto">
-  <name>Task 2: Register Ctrl+=/- as NPP plugin shortcuts that call PreviewPanel zoom methods</name>
+  <name>Task 2: Register Ctrl+=/−/0 as NPP plugin shortcuts that call PreviewPanel zoom methods</name>
   <files>
     MarkdownPreview/src/PreviewPanel.h,
     MarkdownPreview/src/PreviewPanel.cpp,
@@ -255,28 +262,29 @@ but confirm the solution still builds cleanly).
   </files>
   <action>
 The root cause is that AcceleratorKeyPressed only fires when WebView2 has keyboard focus, but
-Scintilla always retains focus in normal use. The fix registers Ctrl+= and Ctrl+- as NPP plugin
-FuncItem shortcuts, which fire regardless of focus.
+Scintilla always retains focus in normal use. The fix registers Ctrl+=, Ctrl+-, and Ctrl+0 as
+NPP plugin FuncItem shortcuts, which fire regardless of focus.
 
-**Step A — PreviewPanel.h: add public zoomIn() and zoomOut() declarations**
+**Step A — PreviewPanel.h: add public zoomIn(), zoomOut(), and zoomReset() declarations**
 
 In the `public:` section of the PreviewPanel class (after the existing public method declarations),
 add:
 
 ```cpp
-void zoomIn();   // Ctrl+= handler: increase zoom by 10%, clamp at 800%
-void zoomOut();  // Ctrl+- handler: decrease zoom by 10%, clamp at 80%
+void zoomIn();    // Ctrl+= handler: increase zoom by 10%, clamp at 800%
+void zoomOut();   // Ctrl+- handler: decrease zoom by 10%, clamp at 80%
+void zoomReset(); // Ctrl+0 handler: reset zoom to 100%
 ```
 
 These are called from the new PluginDefinition.cpp menu callbacks.
 
-**Step B — PreviewPanel.cpp: implement zoomIn() and zoomOut()**
+**Step B — PreviewPanel.cpp: implement zoomIn(), zoomOut(), and zoomReset()**
 
-Add the two method implementations after the existing applyInitialZoom() / postZoomToJs() block
+Add the three method implementations after the existing applyInitialZoom() / postZoomToJs() block
 (around line 577, after postZoomToJs). Add:
 
 ```cpp
-// Phase 3 Gap: zoomIn / zoomOut called from NPP plugin FuncItem shortcuts.
+// Phase 3 Gap: zoomIn / zoomOut / zoomReset called from NPP plugin FuncItem shortcuts.
 // These fire regardless of keyboard focus (unlike AcceleratorKeyPressed).
 // Zoom step, clamp values, and persistence mirror AcceleratorKeyPressed handler (D-04, D-05).
 void PreviewPanel::zoomIn() {
@@ -302,9 +310,23 @@ void PreviewPanel::zoomOut() {
     }
     postZoomToJs(m_zoomLevel);
 }
+
+// D-04: Ctrl+0 resets zoom to exactly 1.0f (100%).
+// Delegates to applyInitialZoom() which sets m_zoomLevel and calls postZoomToJs.
+// Also persists the reset level to settings.json so it survives restart.
+void PreviewPanel::zoomReset() {
+    if (m_printToPdfInProgress) return;  // WR-02: guard same as zoomIn/zoomOut
+    applyInitialZoom(1.0f);
+    g_settings.zoomLevel = m_zoomLevel;  // m_zoomLevel is 1.0f after applyInitialZoom
+    if (!m_configPath.empty()) {
+        g_settings.save(m_configPath);
+    }
+}
 ```
 
-Note: `g_settings` and `min`/`max` are already available in this translation unit.
+Note: `g_settings`, `m_configPath`, `min`/`max`, and `applyInitialZoom()` are already available
+in this translation unit. If NOMINMAX is defined, use `std::min` / `std::max` and include
+`<algorithm>`.
 
 **Step C — PreviewPanel.cpp: neutralize the AcceleratorKeyPressed zoom handling**
 
@@ -328,16 +350,16 @@ if (!isZoomKey) return S_OK;
 // Suppress WebView2 built-in zoom behavior regardless of focus state.
 args->put_Handled(TRUE);
 
-// Phase 3 Gap: zoom is now handled via NPP plugin FuncItem shortcuts (zoomIn/zoomOut)
+// Phase 3 Gap: zoom is now handled via NPP plugin FuncItem shortcuts (zoomIn/zoomOut/zoomReset)
 // which fire regardless of keyboard focus. Do not apply zoom here to avoid double-zoom
-// if WebView2 happens to have focus while the user presses Ctrl+=/-.
+// if WebView2 happens to have focus while the user presses Ctrl+=/−/0.
 return S_OK;
 ```
 
 Remove or comment out all the zoom computation and postZoomToJs call that follows that guard.
 Keep everything before isZoomKey (the kind check, the vk check, the ctrlDown check) unchanged.
 
-**Step D — PluginDefinition.h: increase NB_FUNC from 3 to 5**
+**Step D — PluginDefinition.h: increase NB_FUNC from 3 to 6**
 
 Change line 11:
 ```cpp
@@ -345,10 +367,10 @@ Change line 11:
 const int NB_FUNC = 3;  // Toggle Preview + Export as HTML + Export as PDF
 
 // After:
-const int NB_FUNC = 5;  // Toggle Preview + Export as HTML + Export as PDF + Zoom In + Zoom Out
+const int NB_FUNC = 6;  // Toggle Preview + Export as HTML + Export as PDF + Zoom In + Zoom Out + Zoom Reset
 ```
 
-**Step E — PluginDefinition.cpp: add ShortcutKey structs and register FuncItems 3 and 4**
+**Step E — PluginDefinition.cpp: add ShortcutKey structs and register FuncItems 3, 4, and 5**
 
 After the existing `pdfExportShortcut` declaration (line 36), add:
 
@@ -356,12 +378,18 @@ After the existing `pdfExportShortcut` declaration (line 36), add:
 // Shortcut key: Ctrl+= for Zoom In (preview panel)
 // VK_OEM_PLUS is the = key on US keyboards; Ctrl+= is the conventional zoom-in chord.
 // Not a default Notepad++ shortcut.
-static ShortcutKey zoomInShortcut  = { true, false, false, VK_OEM_PLUS };
+static ShortcutKey zoomInShortcut    = { true, false, false, VK_OEM_PLUS };
 
 // Shortcut key: Ctrl+- for Zoom Out (preview panel)
 // VK_OEM_MINUS is the - key; Ctrl+- is the conventional zoom-out chord.
 // Not a default Notepad++ shortcut.
-static ShortcutKey zoomOutShortcut = { true, false, false, VK_OEM_MINUS };
+static ShortcutKey zoomOutShortcut   = { true, false, false, VK_OEM_MINUS };
+
+// Shortcut key: Ctrl+0 for Zoom Reset (preview panel)
+// 0x30 is the virtual key code for the '0' digit key on US keyboards.
+// Ctrl+0 is the conventional "reset zoom to 100%" chord in web browsers.
+// Not a default Notepad++ shortcut.
+static ShortcutKey zoomResetShortcut = { true, false, false, 0x30 };
 ```
 
 Then at the bottom of commandMenuInit() (after funcItems[2] registration, line 74), add:
@@ -369,27 +397,35 @@ Then at the bottom of commandMenuInit() (after funcItems[2] registration, line 7
 ```cpp
 // Menu item 3: Zoom In (Ctrl+=) — calls PreviewPanel::zoomIn() regardless of focus
 wcscpy_s(funcItems[3]._itemName, menuItemSize, L"Zoom In Preview");
-funcItems[3]._pFunc  = zoomInPreview;
-funcItems[3]._cmdID  = 0;
+funcItems[3]._pFunc      = zoomInPreview;
+funcItems[3]._cmdID      = 0;
 funcItems[3]._init2Check = false;
-funcItems[3]._pShKey = &zoomInShortcut;
+funcItems[3]._pShKey     = &zoomInShortcut;
 
 // Menu item 4: Zoom Out (Ctrl+-) — calls PreviewPanel::zoomOut() regardless of focus
 wcscpy_s(funcItems[4]._itemName, menuItemSize, L"Zoom Out Preview");
-funcItems[4]._pFunc  = zoomOutPreview;
-funcItems[4]._cmdID  = 0;
+funcItems[4]._pFunc      = zoomOutPreview;
+funcItems[4]._cmdID      = 0;
 funcItems[4]._init2Check = false;
-funcItems[4]._pShKey = &zoomOutShortcut;
+funcItems[4]._pShKey     = &zoomOutShortcut;
+
+// Menu item 5: Zoom Reset (Ctrl+0) — calls PreviewPanel::zoomReset() regardless of focus (D-04)
+wcscpy_s(funcItems[5]._itemName, menuItemSize, L"Reset Preview Zoom");
+funcItems[5]._pFunc      = zoomResetPreview;
+funcItems[5]._cmdID      = 0;
+funcItems[5]._init2Check = false;
+funcItems[5]._pShKey     = &zoomResetShortcut;
 ```
 
-Add the two callback function declarations in PluginDefinition.h (in the "Menu commands" section):
+Add the three callback function declarations in PluginDefinition.h (in the "Menu commands" section):
 
 ```cpp
-void zoomInPreview();   // menu command: increase preview zoom by 10%
-void zoomOutPreview();  // menu command: decrease preview zoom by 10%
+void zoomInPreview();    // menu command: increase preview zoom by 10%
+void zoomOutPreview();   // menu command: decrease preview zoom by 10%
+void zoomResetPreview(); // menu command: reset preview zoom to 100% (D-04)
 ```
 
-Add the two callback function implementations in PluginDefinition.cpp (after exportMarkdownAsPdf()):
+Add the three callback function implementations in PluginDefinition.cpp (after exportMarkdownAsPdf()):
 
 ```cpp
 void zoomInPreview() {
@@ -399,34 +435,38 @@ void zoomInPreview() {
 void zoomOutPreview() {
     g_previewPanel.zoomOut();
 }
+
+void zoomResetPreview() {
+    g_previewPanel.zoomReset();
+}
 ```
 
 **Step F — Build and confirm**
 
-Build with:
-```
-msbuild MarkdownPreview.sln /p:Configuration=Debug /p:Platform=x64
-```
-
-Fix any compilation errors before considering this task done. Common issues to watch for:
+Build with msbuild and fix any compilation errors before considering this task done. Common issues
+to watch for:
 - `VK_OEM_PLUS` / `VK_OEM_MINUS` are defined in `<winuser.h>` via `<windows.h>`, already included.
+- `0x30` (digit '0') does not require a named constant — the literal is sufficient.
 - `min` / `max` — if NOMINMAX is defined, use `std::min` / `std::max` and include `<algorithm>`.
   </action>
   <verify>
-1. Build succeeds with zero errors: `msbuild MarkdownPreview.sln /p:Configuration=Debug /p:Platform=x64`
-2. Install the Debug DLL into the Notepad++ plugins folder.
-3. Open Notepad++ with a .md file. Confirm the editor (Scintilla) has focus (click the editor text area).
-4. Press Ctrl+= — the preview panel text grows visibly.
-5. Press Ctrl+- — the preview panel text shrinks visibly.
-6. Press Ctrl+0 (this still uses Scintilla's Ctrl+0 reset — NOT expected to zoom preview; only Ctrl+= and Ctrl+- are new. Ctrl+0 in editor context zooms the editor. Zoom reset of the preview is out of scope for this gap — the existing AcceleratorKeyPressed Ctrl+0 only fires when WebView2 has focus.)
-7. Confirm Ctrl+= at 800% zoom does not increase further (clamped).
-8. Confirm Ctrl+- at 80% zoom does not decrease further (clamped).
-9. Restart Notepad++ and confirm the zoom level is preserved (settings.json persistence).
+<automated>msbuild MarkdownPreview.sln /p:Configuration=Debug /p:Platform=x64</automated>
+
+After a successful build, install the Debug DLL into the Notepad++ plugins folder and verify
+manually:
+1. Open Notepad++ with a .md file. Confirm the editor (Scintilla) has focus (click the editor text area).
+2. Press Ctrl+= — the preview panel text grows visibly.
+3. Press Ctrl+- — the preview panel text shrinks visibly.
+4. Press Ctrl+0 — the preview panel text resets to 100% zoom.
+5. Confirm Ctrl+= at 800% zoom does not increase further (clamped).
+6. Confirm Ctrl+- at 80% zoom does not decrease further (clamped).
+7. Restart Notepad++ and confirm the zoom level is preserved (settings.json persistence).
   </verify>
   <done>
-- Build compiles cleanly with NB_FUNC = 5 and two new FuncItem entries
+- Build compiles cleanly with NB_FUNC = 6 and three new FuncItem entries (Zoom In, Zoom Out, Zoom Reset)
 - Ctrl+= increases preview zoom while Scintilla has focus (editor is active)
 - Ctrl+- decreases preview zoom while Scintilla has focus (editor is active)
+- Ctrl+0 resets preview zoom to exactly 100% while Scintilla has focus (D-04)
 - Zoom is clamped at 80% and 800%
 - Zoom level persists across Notepad++ restart
 - No double-zoom occurs when WebView2 happens to have focus (AcceleratorKeyPressed zoom neutralized)
@@ -450,8 +490,8 @@ Fix any compilation errors before considering this task done. Common issues to w
 |-----------|----------|-----------|-------------|-----------------|
 | T-03G-01 | Tampering | Mermaid SVG inserted into DOM | mitigate | WR-01 (already present): DOMParser + querySelectorAll('script').remove() strips script nodes before DOM insertion. Off-screen container does not weaken this — SVG is still parsed via DOMParser, not innerHTML. |
 | T-03G-02 | Elevation of Privilege | Off-screen container persists in DOM | mitigate | Promise.allSettled cleanup removes the container after all renders settle. Container has visibility:hidden and overflow:hidden — no user-visible surface. |
-| T-03G-03 | Denial of Service | zoomIn/zoomOut called rapidly from shortcut key repeat | accept | Key repeat rate is hardware-limited; postZoomToJs posts a JSON message which is async and cheap. m_printToPdfInProgress guard already blocks during PDF export. No rate limiting needed at this volume. |
-| T-03G-04 | Tampering | FuncItem shortcut conflicts with Notepad++ built-in | accept | Ctrl+= and Ctrl+- are not default Notepad++ shortcuts (verified against NPP default shortcut list). NPP plugin FuncItem registration wins over editor default handling when registered. |
+| T-03G-03 | Denial of Service | zoomIn/zoomOut/zoomReset called rapidly from shortcut key repeat | accept | Key repeat rate is hardware-limited; postZoomToJs posts a JSON message which is async and cheap. m_printToPdfInProgress guard already blocks during PDF export. No rate limiting needed at this volume. |
+| T-03G-04 | Tampering | FuncItem shortcut conflicts with Notepad++ built-in | accept | Ctrl+=, Ctrl+-, and Ctrl+0 are not default Notepad++ shortcuts (verified against NPP default shortcut list). NPP plugin FuncItem registration wins over editor default handling when registered. |
 </threat_model>
 
 <verification>
@@ -462,13 +502,14 @@ After both tasks are complete, verify the following end-to-end scenarios:
 3. Export the Mermaid document as PDF. The PDF contains the rendered diagram, no "Syntax error" text. (UAT test 9)
 4. With Scintilla focused, press Ctrl+= three times. Preview zoom increases by 30%. (UAT test 7)
 5. With Scintilla focused, press Ctrl+- three times. Preview zoom decreases by 30%. (UAT test 7)
-6. Restart Notepad++. Zoom level is preserved. (UAT test 8)
-7. Build: `msbuild MarkdownPreview.sln /p:Configuration=Release /p:Platform=x64` succeeds with zero errors.
+6. With Scintilla focused, press Ctrl+0. Preview zoom resets to exactly 100%. (UAT test 7, D-04)
+7. Restart Notepad++. Zoom level is preserved. (UAT test 8)
+8. Build: `msbuild MarkdownPreview.sln /p:Configuration=Release /p:Platform=x64` succeeds with zero errors.
 </verification>
 
 <success_criteria>
 - UAT test 4 (Mermaid SVG): pass
-- UAT test 7 (Ctrl+=/- zoom): pass
+- UAT test 7 (Ctrl+=/−/0 zoom): pass — including Ctrl+0 reset to 100%
 - UAT test 9 (clean PDF): pass (side-effect of test 4 fix)
 - UAT test 8 (zoom persistence): unblocked and passing
 - No regression on UAT tests 1, 2, 3, 5, 6, 10
@@ -479,4 +520,3 @@ After both tasks are complete, verify the following end-to-end scenarios:
 After completion, create `.planning/phases/03-extended-rendering/03-GAP-SUMMARY.md` using the
 standard summary template at `.claude/get-shit-done/templates/summary.md`.
 </output>
-```
