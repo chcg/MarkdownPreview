@@ -632,6 +632,32 @@
                 break;
         }
     });
+
+    // =========================================================================
+    // Click-to-editor navigation (SCRL-02, D-01, D-02)
+    // Delegated listener on #preview — fires only for clicks inside the preview
+    // area, not inside the TOC sidebar (added in Plan 02 outside #preview).
+    // Walks up from clicked element to find nearest ancestor with data-line.
+    // Silent caret move — no animation, no highlight (D-02).
+    // =========================================================================
+    (function() {
+        var previewEl = document.getElementById('preview');
+        if (!previewEl) return;
+        previewEl.addEventListener('click', function(evt) {
+            var el = evt.target;
+            while (el && el !== previewEl) {
+                var lineAttr = el.getAttribute('data-line');
+                if (lineAttr !== null) {
+                    window.chrome.webview.postMessage(
+                        JSON.stringify({ type: 'lineClick', line: parseInt(lineAttr, 10) })
+                    );
+                    return;
+                }
+                el = el.parentElement;
+            }
+            // If no data-line ancestor found within #preview, do nothing.
+        });
+    })();
     </script>
 </body>
 </html>
