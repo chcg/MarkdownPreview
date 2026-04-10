@@ -481,6 +481,7 @@ void PreviewPanel::renderMarkdown(const std::wstring& filePath) {
     // Convert wstring to UTF-8 for nlohmann (nlohmann handles UTF-8 natively)
     int utf8len = ::WideCharToMultiByte(CP_UTF8, 0, wtext.c_str(),
         static_cast<int>(wtext.size()), nullptr, 0, nullptr, nullptr);
+    if (utf8len <= 0) return;  // WR-01: conversion failed — bail rather than sending empty render
     std::string utf8Markdown(static_cast<size_t>(utf8len), '\0');
     ::WideCharToMultiByte(CP_UTF8, 0, wtext.c_str(),
         static_cast<int>(wtext.size()), &utf8Markdown[0], utf8len, nullptr, nullptr);
@@ -488,6 +489,7 @@ void PreviewPanel::renderMarkdown(const std::wstring& filePath) {
     // Build file path as UTF-8
     int pathLen = ::WideCharToMultiByte(CP_UTF8, 0, filePath.c_str(),
         static_cast<int>(filePath.size()), nullptr, 0, nullptr, nullptr);
+    if (pathLen <= 0) return;  // WR-01: conversion failed — bail rather than sending empty filePath
     std::string utf8FilePath(static_cast<size_t>(pathLen), '\0');
     ::WideCharToMultiByte(CP_UTF8, 0, filePath.c_str(),
         static_cast<int>(filePath.size()), &utf8FilePath[0], pathLen, nullptr, nullptr);
