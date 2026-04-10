@@ -1,0 +1,10 @@
+{
+  "folder-name": "MarkdownPreview",
+  "display-name": "MarkdownPreview",
+  "version": "1.0.0",
+  "id": "REPLACE_WITH_SHA256_FROM_PACKAGE_PS1",
+  "repository": "https://github.com/hbeni/MarkdownPreview/releases/download/v1.0.0/MarkdownPreview_v1.0.0_x64.zip",
+  "description": "Live Markdown preview panel with scroll sync, TOC, math, diagrams, and export",
+  "author": "Henk",
+  "homepage": "https://github.com/hbeni/MarkdownPreview"
+}
