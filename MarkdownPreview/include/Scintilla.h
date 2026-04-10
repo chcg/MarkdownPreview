@@ -49,6 +49,11 @@ struct SCNotification {
 #define SCI_GETCURRENTPOS       2008
 #define SCI_LINEFROMPOSITION    2166
 #define SCI_GETCODEPAGE         2137
+
+// Phase 4 additions (click-to-editor navigation)
+#define SCI_ENSUREVISIBLE       2232
+#define SCI_GOTOLINE            2024
+#define SCI_SCROLLCARET         2169
 // Notification codes (nmhdr.code in SCNotification) — distinct namespace from SCI_ message IDs
 // Note: SCN_MODIFIED (2008) and SCI_GETCURRENTPOS share the same numeric value by design.
 // SCN_ codes appear in nmhdr.code; SCI_ codes are SendMessage wParam. They never conflict.
