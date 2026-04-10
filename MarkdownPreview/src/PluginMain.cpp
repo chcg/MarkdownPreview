@@ -61,11 +61,11 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification* notification) {
         break;
     case SCN_MODIFIED:
         // Text inserted or deleted — schedule debounced re-render (REND-02)
-        onScnModified(notification);
+        try { onScnModified(notification); } catch (...) {}
         break;
     case SCN_UPDATEUI:
         // Caret/scroll position changed — placeholder for scroll sync (Plan 02-03)
-        onScnUpdateUi(notification);
+        try { onScnUpdateUi(notification); } catch (...) {}
         break;
     default:
         break;
