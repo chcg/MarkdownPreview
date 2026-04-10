@@ -443,7 +443,7 @@ std::wstring PreviewPanel::getCurrentText() {
     HWND hSci = (sciId == 0) ? nppData._scintillaMainHandle : nppData._scintillaSecondHandle;
 
     LRESULT len = ::SendMessage(hSci, SCI_GETLENGTH, 0, 0);
-    if (len < 0) return L"";   // guard: should never happen but be safe
+    if (len <= 0) return L"";  // WR-02: empty document or error — nothing to retrieve
     std::string utf8Text(static_cast<size_t>(len) + 1, '\0');
     ::SendMessage(hSci, SCI_GETTEXT, static_cast<WPARAM>(static_cast<size_t>(len) + 1),
         reinterpret_cast<LPARAM>(utf8Text.data()));
