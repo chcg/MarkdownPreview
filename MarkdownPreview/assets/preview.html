@@ -438,6 +438,22 @@
         if (!_mermaid) return;
 
         var mermaidBlocks = document.querySelectorAll('code.language-mermaid');
+        if (mermaidBlocks.length === 0) return;
+
+        // Off-screen container gives getBBox() a real layout context (non-zero pixel dimensions).
+        // Mermaid's calculateTextDimensions appends a temp SVG here for measurement.
+        // position:absolute + left:-9999px removes it from the visible viewport.
+        // width/height non-zero so getBBox() does not return {width:0, height:0}.
+        // visibility:hidden prevents any flash; overflow:hidden clips stray content.
+        var offscreenContainer = document.createElement('div');
+        offscreenContainer.style.cssText =
+            'position:absolute;left:-9999px;top:0;' +
+            'width:800px;height:600px;' +
+            'visibility:hidden;overflow:hidden;';
+        document.body.appendChild(offscreenContainer);
+
+        var renderPromises = [];
+
         mermaidBlocks.forEach(function(codeEl, index) {
             var pre = codeEl.parentElement;
             // codeEl.textContent gives raw text (hljs adds <span> nodes but textContent strips them)
@@ -446,10 +462,11 @@
             // Create a unique ID for mermaid.render()
             var id = 'mermaid-diagram-' + index + '-' + Date.now();
 
-            // D-01: Use mermaid.render() per diagram with try/catch.
+            // D-01: Use mermaid.render() per diagram with catch.
             // mermaid.run() does not reject per-diagram errors — it inserts an error SVG.
             // mermaid.render() returns a Promise; we catch per diagram to implement D-01.
-            _mermaid.render(id, source).then(function(result) {
+            // Third argument is the off-screen container, giving getBBox() a real layout context.
+            var p = _mermaid.render(id, source, offscreenContainer).then(function(result) {
                 // WR-01: Use DOMParser to avoid unsanitized innerHTML SVG injection.
                 // DOMParser parses in a sandboxed context; script removal adds defence-in-depth.
                 var parser = new DOMParser();
@@ -463,8 +480,17 @@
                 // D-01 fallback: show syntax-highlighted code block instead of error SVG
                 // The <pre><code class="language-mermaid"> is already in the DOM from hljs;
                 // just leave it in place (no DOM change needed on failure).
-                // hljs has already highlighted it; it will display as code.
             });
+
+            renderPromises.push(p);
+        });
+
+        // Remove the off-screen container after all render() Promises settle (success or failure).
+        // allSettled (not all) ensures cleanup even when some diagrams fail D-01 fallback.
+        Promise.allSettled(renderPromises).then(function() {
+            if (offscreenContainer.parentNode) {
+                offscreenContainer.parentNode.removeChild(offscreenContainer);
+            }
         });
     }
 
