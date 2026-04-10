@@ -67,10 +67,10 @@ Plans:
 **UI hint**: yes
 
 Plans:
-- [ ] 03-01-PLAN.md — Asset downloads (KaTeX, texmath, markdown-it-footnote) + preview.html KaTeX/footnote plugin init
-- [ ] 03-02-PLAN.md — Mermaid IIFE bundle download + preview.html Mermaid rendering + copy-to-clipboard buttons
-- [ ] 03-03-PLAN.md — Settings zoomLevel field + PreviewPanel AcceleratorKeyPressed zoom + preview.html zoom message case
-- [ ] 03-04-PLAN.md — PDF export via ICoreWebView2_7::PrintToPdf + "Export as PDF" menu item (Ctrl+Shift+P)
+- [x] 03-01-PLAN.md — Asset downloads (KaTeX, texmath, markdown-it-footnote) + preview.html KaTeX/footnote plugin init
+- [x] 03-02-PLAN.md — Mermaid IIFE bundle download + preview.html Mermaid rendering + copy-to-clipboard buttons
+- [x] 03-03-PLAN.md — Settings zoomLevel field + PreviewPanel AcceleratorKeyPressed zoom + preview.html zoom message case
+- [x] 03-04-PLAN.md — PDF export via ICoreWebView2_7::PrintToPdf + "Export as PDF" menu item (Ctrl+Shift+P)
 
 ### Phase 4: Polish & Publication
 **Goal**: Full bidirectional navigation between editor and preview, table of contents, and publish-ready packaging for the Notepad++ plugin list
@@ -80,10 +80,12 @@ Plans:
   1. Clicking a location in the preview scrolls the editor to the corresponding source line
   2. A clickable table of contents generated from document headings is available in the preview
   3. Plugin is packaged with a proper installer, versioning, and is compatible with the Notepad++ plugin list
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-(TBD)
+- [ ] 04-01-PLAN.md — Click-to-editor navigation (JS listener + C++ SCI_GOTOLINE handler)
+- [ ] 04-02-PLAN.md — TOC sidebar (flex layout, buildToc, updateTocActive, active heading tracking)
+- [ ] 04-03-PLAN.md — DLL version resource (.rc), manifest.json, scripts/package.ps1 zip automation
 
 ## Progress
 
@@ -95,4 +97,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 | 1. Plugin Foundation | 0/3 | Planning complete | - |
 | 2. Core Preview | 0/4 | Planning complete | - |
 | 3. Extended Rendering | 0/4 | Planning complete | - |
-| 4. Polish & Publication | 0/TBD | Not started | - |
+| 4. Polish & Publication | 0/3 | Planning complete | - |
