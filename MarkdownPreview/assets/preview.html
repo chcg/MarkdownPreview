@@ -159,6 +159,63 @@
             background: #2d333b;
             color: #e6edf3;
         }
+
+        /* TOC sidebar + flex layout (SCRL-03, D-05, D-06, D-09) */
+        /* body must be overflow:hidden so #preview is the scroll container, not body */
+        body {
+            overflow: hidden;
+        }
+
+        #layout {
+            display: flex;
+            height: 100%;
+        }
+
+        #toc {
+            width: 200px;
+            min-width: 200px;
+            flex-shrink: 0;
+            overflow-y: auto;
+            padding: var(--space-md);
+            font-size: 13px;
+            line-height: 1.5;
+            border-right: 1px solid #d1d9e0;
+        }
+        body[data-theme="dark"] #toc {
+            border-right-color: #3d444d;
+            color: #9198a1;
+        }
+
+        /* #preview becomes the scrollable flex child (replaces direct body scroll) */
+        #preview {
+            flex: 1;
+            overflow-y: auto;
+            min-width: 0;  /* prevents flex blowout on wide pre/table blocks */
+        }
+
+        .toc-entry {
+            display: block;
+            padding: 2px 0;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .toc-entry:hover { text-decoration: underline; }
+
+        /* Active heading highlight (D-09) */
+        .toc-active { font-weight: 600; color: #0969da; }
+        body[data-theme="dark"] .toc-active { color: #58a6ff; }
+
+        /* Indent per heading level (Claude's discretion) */
+        .toc-h1 { padding-left: 0; }
+        .toc-h2 { padding-left: 12px; }
+        .toc-h3 { padding-left: 24px; }
+        .toc-h4 { padding-left: 36px; }
+        .toc-h5 { padding-left: 48px; }
+        .toc-h6 { padding-left: 60px; }
     </style>
 
     <!-- JS libraries (loaded synchronously — no defer, order matters) -->
@@ -184,8 +241,12 @@
         </div>
     </div>
 
-    <!-- Primary preview area (hidden until first render) -->
-    <div id="preview" class="markdown-body" style="display:none"></div>
+    <!-- Flex layout wrapper: TOC sidebar + preview content (SCRL-03, D-05) -->
+    <div id="layout">
+        <nav id="toc" style="display:none"></nav>
+        <!-- Primary preview area (hidden until first render) -->
+        <div id="preview" class="markdown-body" style="display:none"></div>
+    </div>
 
     <!-- Error state (shown on render failure) -->
     <div id="error-state">
@@ -476,6 +537,7 @@
             // Order matters: mermaid replaces some <pre> elements; copy buttons inject into remaining ones
             renderMermaidDiagrams();
             injectCopyButtons();
+            buildToc();
         } catch (err) {
             // Show error state per UI-SPEC Copywriting Contract
             hideIdle();
@@ -510,6 +572,65 @@
             best.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
         // If no element found: no scroll, no error (per D-04 spec)
+    }
+
+    // =========================================================================
+    // Table of contents (SCRL-03, D-05, D-06, D-07, D-08, D-09)
+    // buildToc(): generates TOC from rendered headings after each renderMarkdown().
+    // updateTocActive(): highlights the nearest TOC entry on editor scroll.
+    // =========================================================================
+    function buildToc() {
+        var toc = document.getElementById('toc');
+        if (!toc) return;
+        var headings = document.querySelectorAll(
+            '#preview h1,#preview h2,#preview h3,#preview h4,#preview h5,#preview h6'
+        );
+        if (!headings.length) {
+            // D-06: no headings — hide sidebar, let content take full width
+            toc.style.display = 'none';
+            return;
+        }
+        // D-05: headings exist — show sidebar
+        toc.style.display = 'block';
+        toc.innerHTML = '';
+        headings.forEach(function(h) {
+            var line = parseInt(h.getAttribute('data-line') || '-1', 10);
+            var text = h.textContent || '';
+            var a = document.createElement('a');
+            a.className = 'toc-entry toc-' + h.tagName.toLowerCase();
+            a.textContent = text;  // text-overflow:ellipsis handles long headings in CSS
+            a.title = text;        // full text on tooltip hover
+            a.href = '#';
+            a.setAttribute('data-line', String(line));
+            a.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();  // defense-in-depth: prevent bubbling
+                // D-08: navigate preview (smooth scroll to heading element)
+                h.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                // D-08: navigate editor (same lineClick mechanism as Plan 01 D-01/D-04)
+                if (line >= 0) {
+                    window.chrome.webview.postMessage(
+                        JSON.stringify({ type: 'lineClick', line: line })
+                    );
+                }
+            });
+            toc.appendChild(a);
+        });
+    }
+
+    function updateTocActive(line) {
+        // D-09: highlight the TOC entry whose heading is nearest above the current scroll line.
+        // 'line' is the editor's current caret/scroll line (0-indexed, from C++ scroll message).
+        var entries = document.querySelectorAll('#toc .toc-entry');
+        var best = null;
+        entries.forEach(function(entry) {
+            var entryLine = parseInt(entry.getAttribute('data-line') || '-1', 10);
+            if (entryLine >= 0 && entryLine <= line) {
+                best = entry;
+            }
+        });
+        entries.forEach(function(e) { e.classList.remove('toc-active'); });
+        if (best) { best.classList.add('toc-active'); }
     }
 
     // =========================================================================
@@ -620,6 +741,7 @@
                 break;
             case 'scroll':
                 scrollToLine(msg.line || 0);
+                updateTocActive(msg.line || 0);
                 break;
             case 'export':
                 exportHtml();
